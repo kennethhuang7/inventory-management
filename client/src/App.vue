@@ -105,6 +105,7 @@
     <TasksModal
       :is-open="showTasks"
       :tasks="tasks"
+      :error="taskError"
       @close="showTasks = false"
       @add-task="addTask"
       @delete-task="deleteTask"
@@ -140,6 +141,8 @@ export default {
     const showProfileDetails = ref(false)
     const showTasks = ref(false)
     const apiTasks = ref([])
+    // Message for the last failed task action; cleared on the next success so it never goes stale
+    const taskError = ref('')
     const route = useRoute()
 
     // Order matches the router; icon is a list of 24x24 stroke path data
@@ -182,8 +185,10 @@ export default {
     const loadTasks = async () => {
       try {
         apiTasks.value = await api.getTasks()
+        taskError.value = ''
       } catch (err) {
         console.error('Failed to load tasks:', err)
+        taskError.value = t('tasks.errors.load')
       }
     }
 
@@ -192,8 +197,10 @@ export default {
         const newTask = await api.createTask(taskData)
         // Add new task to the beginning of the array
         apiTasks.value.unshift(newTask)
+        taskError.value = ''
       } catch (err) {
         console.error('Failed to add task:', err)
+        taskError.value = t('tasks.errors.add')
       }
     }
 
@@ -213,8 +220,10 @@ export default {
           await api.deleteTask(taskId)
           apiTasks.value = apiTasks.value.filter(t => t.id !== taskId)
         }
+        taskError.value = ''
       } catch (err) {
         console.error('Failed to delete task:', err)
+        taskError.value = t('tasks.errors.delete')
       }
     }
 
@@ -234,8 +243,10 @@ export default {
             apiTasks.value[index] = updatedTask
           }
         }
+        taskError.value = ''
       } catch (err) {
         console.error('Failed to toggle task:', err)
+        taskError.value = t('tasks.errors.toggle')
       }
     }
 
@@ -246,6 +257,7 @@ export default {
       showProfileDetails,
       showTasks,
       tasks,
+      taskError,
       navItems,
       collapsed,
       drawerOpen,
@@ -300,6 +312,12 @@ export default {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+/* Baseline keyboard focus indicator; components with their own focus style override this */
+:focus-visible {
+  outline: 2px solid var(--color-accent, #2563eb);
+  outline-offset: 2px;
 }
 
 body {

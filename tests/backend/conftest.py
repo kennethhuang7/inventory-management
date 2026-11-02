@@ -61,3 +61,27 @@ def sample_order():
         "total_value": 87799.5,
         "actual_delivery": "2025-01-20T10:19:00"
     }
+
+
+@pytest.fixture
+def clean_tasks():
+    """Start and end a test with no tasks (tasks live in memory and would leak between tests)."""
+    import main
+
+    main.tasks_db.clear()
+    yield
+    main.tasks_db.clear()
+
+
+@pytest.fixture
+def clean_purchase_orders():
+    """Start a test with no purchase orders and restore the original list afterwards.
+
+    main.py and mock_data.py share one list object, so it must be changed in place.
+    """
+    import mock_data
+
+    saved = list(mock_data.purchase_orders)
+    mock_data.purchase_orders.clear()
+    yield
+    mock_data.purchase_orders[:] = saved

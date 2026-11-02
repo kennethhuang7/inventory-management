@@ -1,9 +1,12 @@
 <template>
-  <div class="profile-menu">
+  <div ref="rootRef" class="profile-menu" @focusout="onFocusOut" @keydown="onKeydown">
     <button
+      ref="triggerRef"
+      type="button"
       class="profile-button"
+      aria-haspopup="menu"
+      :aria-expanded="isDropdownOpen"
       @click="toggleDropdown"
-      @blur="handleBlur"
     >
       <div class="avatar">
         {{ getInitials(currentUser.name) }}
@@ -16,12 +19,13 @@
         height="16"
         viewBox="0 0 16 16"
         fill="none"
+        aria-hidden="true"
       >
         <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </button>
 
-    <div v-if="isDropdownOpen" class="dropdown-menu">
+    <div v-if="isDropdownOpen" class="dropdown-menu" role="menu" :aria-label="t('profile.menu')">
       <div class="dropdown-header">
         <div class="avatar-large">
           {{ getInitials(currentUser.name) }}
@@ -35,10 +39,12 @@
       <div class="dropdown-divider"></div>
 
       <button
+        type="button"
+        role="menuitem"
         class="dropdown-item"
-        @mousedown.prevent="showProfileDetails"
+        @click="showProfileDetails"
       >
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
           <path d="M9 9C10.6569 9 12 7.65685 12 6C12 4.34315 10.6569 3 9 3C7.34315 3 6 4.34315 6 6C6 7.65685 7.34315 9 9 9Z" stroke="currentColor" stroke-width="1.5"/>
           <path d="M15 15C15 12.7909 12.3137 11 9 11C5.68629 11 3 12.7909 3 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
@@ -46,10 +52,12 @@
       </button>
 
       <button
+        type="button"
+        role="menuitem"
         class="dropdown-item"
-        @mousedown.prevent="showTasks"
+        @click="showTasks"
       >
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
           <path d="M15 3H3C2.44772 3 2 3.44772 2 4V14C2 14.5523 2.44772 15 3 15H15C15.5523 15 16 14.5523 16 14V4C16 3.44772 15.5523 3 15 3Z" stroke="currentColor" stroke-width="1.5"/>
           <path d="M6 7L8 9L12 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
@@ -60,10 +68,12 @@
       <div class="dropdown-divider"></div>
 
       <button
+        type="button"
+        role="menuitem"
         class="dropdown-item logout"
-        @mousedown.prevent="handleLogout"
+        @click="handleLogout"
       >
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
           <path d="M7 15H4C3.44772 15 3 14.5523 3 14V4C3 3.44772 3.44772 3 4 3H7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
           <path d="M11 12L15 9M15 9L11 6M15 9H7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
@@ -74,7 +84,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import { useI18n } from '../composables/useI18n'
 
@@ -84,6 +94,9 @@ const { t } = useI18n()
 const isDropdownOpen = ref(false)
 const emit = defineEmits(['show-profile-details', 'show-tasks'])
 
+const rootRef = ref(null)
+const triggerRef = ref(null)
+
 const pendingTaskCount = computed(() => {
   return currentUser.value.tasks.filter(task => task.status === 'pending').length
 })
@@ -92,25 +105,67 @@ const toggleDropdown = () => {
   isDropdownOpen.value = !isDropdownOpen.value
 }
 
-const handleBlur = () => {
-  // Delay to allow mousedown events on dropdown items to fire first
-  setTimeout(() => {
-    isDropdownOpen.value = false
-  }, 200)
+// Closing always returns focus to the trigger so keyboard users keep their place
+const closeMenu = ({ restoreFocus = true } = {}) => {
+  if (!isDropdownOpen.value) return
+  isDropdownOpen.value = false
+  if (restoreFocus) triggerRef.value?.focus()
 }
 
+const getItems = () => [...(rootRef.value?.querySelectorAll('[role="menuitem"]') || [])]
+
+const onKeydown = (event) => {
+  if (!isDropdownOpen.value) return
+  if (event.key === 'Escape') {
+    event.stopPropagation()
+    closeMenu()
+    return
+  }
+  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+  event.preventDefault()
+  const items = getItems()
+  if (!items.length) return
+  const index = items.indexOf(document.activeElement)
+  const step = event.key === 'ArrowDown' ? 1 : -1
+  // From the trigger (index -1) ArrowDown goes to the first item and ArrowUp to the last
+  const next = index === -1 ? (step === 1 ? 0 : items.length - 1) : (index + step + items.length) % items.length
+  items[next].focus()
+}
+
+// Replaces the old blur + setTimeout, which closed the menu before Tab could reach the items.
+// relatedTarget is null when focus leaves the window; keep the menu open then.
+const onFocusOut = (event) => {
+  const next = event.relatedTarget
+  if (next && !rootRef.value?.contains(next)) closeMenu({ restoreFocus: false })
+}
+
+const onDocumentClick = (event) => {
+  if (!rootRef.value?.contains(event.target)) closeMenu({ restoreFocus: false })
+}
+
+// The document listener only exists while the menu is open
+watch(isDropdownOpen, (open) => {
+  if (open) {
+    // Defer so the click that opened the menu is not seen as an outside click
+    nextTick(() => document.addEventListener('click', onDocumentClick))
+  } else {
+    document.removeEventListener('click', onDocumentClick)
+  }
+})
+onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
+
 const showProfileDetails = () => {
-  isDropdownOpen.value = false
+  closeMenu()
   emit('show-profile-details')
 }
 
 const showTasks = () => {
-  isDropdownOpen.value = false
+  closeMenu()
   emit('show-tasks')
 }
 
 const handleLogout = () => {
-  isDropdownOpen.value = false
+  closeMenu()
   logout()
 }
 </script>
@@ -296,6 +351,18 @@ const handleLogout = () => {
 
 .dropdown-item:hover {
   background: #f8fafc;
+}
+
+/* Inset ring: the menu has overflow hidden, so an outer outline would be clipped */
+.dropdown-item:focus-visible {
+  background: #f8fafc;
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
+.profile-button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .dropdown-item svg {

@@ -2,11 +2,11 @@
   <Teleport to="body">
     <Transition name="modal">
       <div v-if="isOpen && inventoryItem" class="modal-overlay" @click="close">
-        <div class="modal-container" @click.stop>
+        <div ref="dialogRef" class="modal-container" role="dialog" aria-modal="true" aria-labelledby="inventory-modal-title" tabindex="-1" @click.stop>
           <div class="modal-header">
-            <h3 class="modal-title">Inventory Item Details</h3>
-            <button class="close-button" @click="close">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <h3 id="inventory-modal-title" class="modal-title">{{ t('modals.inventory.title') }}</h3>
+            <button type="button" class="close-button" :aria-label="t('common.close')" @click="close">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               </svg>
             </button>
@@ -15,7 +15,7 @@
           <div class="modal-body">
             <div class="item-header">
               <div class="item-icon" :class="getStockIconClass()">
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                <svg aria-hidden="true" width="48" height="48" viewBox="0 0 48 48" fill="none">
                   <rect x="8" y="12" width="32" height="28" rx="2" stroke="currentColor" stroke-width="2.5"/>
                   <path d="M16 8V16M32 8V16M8 20H40" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
                   <path d="M16 28H32M16 34H24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
@@ -23,72 +23,72 @@
               </div>
               <div class="item-title-section">
                 <h4 class="item-name">{{ translateProductName(inventoryItem.name) }}</h4>
-                <div class="item-sku">SKU: {{ inventoryItem.sku }}</div>
+                <div class="item-sku">{{ t('modals.sku', { sku: inventoryItem.sku }) }}</div>
               </div>
               <span class="stock-badge" :class="getStockStatusClass()">
-                {{ getStockStatus() }}
+                {{ getStockStatusLabel() }}
               </span>
             </div>
 
             <div class="stock-summary">
               <div class="summary-card primary">
-                <div class="summary-label">Quantity on Hand</div>
-                <div class="summary-value">{{ inventoryItem.quantity_on_hand }} units</div>
+                <div class="summary-label">{{ t('modals.inventory.quantityOnHand') }}</div>
+                <div class="summary-value">{{ t('modals.units', { count: inventoryItem.quantity_on_hand }) }}</div>
               </div>
               <div class="summary-card" :class="getSummaryCardClass()">
-                <div class="summary-label">Stock Level</div>
+                <div class="summary-label">{{ t('modals.inventory.stockLevel') }}</div>
                 <div class="summary-value">{{ stockPercentage }}%</div>
-                <div class="summary-subtitle">vs. reorder point</div>
+                <div class="summary-subtitle">{{ t('modals.inventory.vsReorder') }}</div>
               </div>
             </div>
 
             <div class="info-grid">
               <div class="info-item">
-                <div class="info-label">Category</div>
+                <div class="info-label">{{ t('modals.inventory.category') }}</div>
                 <div class="info-value">{{ inventoryItem.category }}</div>
               </div>
 
               <div class="info-item">
-                <div class="info-label">Location</div>
+                <div class="info-label">{{ t('modals.inventory.location') }}</div>
                 <div class="info-value">{{ inventoryItem.location }}</div>
               </div>
 
               <div class="info-item">
-                <div class="info-label">Reorder Point</div>
-                <div class="info-value">{{ inventoryItem.reorder_point }} units</div>
+                <div class="info-label">{{ t('modals.inventory.reorderPoint') }}</div>
+                <div class="info-value">{{ t('modals.units', { count: inventoryItem.reorder_point }) }}</div>
               </div>
 
               <div class="info-item">
-                <div class="info-label">Units Remaining</div>
+                <div class="info-label">{{ t('modals.inventory.unitsRemaining') }}</div>
                 <div class="info-value">
                   <span :style="{ color: inventoryItem.quantity_on_hand <= inventoryItem.reorder_point ? '#ef4444' : '#10b981' }">
-                    {{ inventoryItem.quantity_on_hand - inventoryItem.reorder_point }} units
+                    {{ t('modals.units', { count: inventoryItem.quantity_on_hand - inventoryItem.reorder_point }) }}
                   </span>
                 </div>
               </div>
 
               <div class="info-item">
-                <div class="info-label">Unit Cost</div>
-                <div class="info-value">{{ currencySymbol }}{{ inventoryItem.unit_cost.toFixed(2) }}</div>
+                <div class="info-label">{{ t('modals.inventory.unitCost') }}</div>
+                <div class="info-value">{{ formatMoney(inventoryItem.unit_cost, currentCurrency, { decimals: 2 }) }}</div>
               </div>
 
               <div class="info-item">
-                <div class="info-label">Total Value</div>
+                <div class="info-label">{{ t('modals.inventory.totalValue') }}</div>
                 <div class="info-value total-value">
-                  {{ currencySymbol }}{{ totalValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}
+                  {{ formatMoney(totalValue, currentCurrency, { decimals: 2 }) }}
                 </div>
               </div>
 
               <div class="info-item">
-                <div class="info-label">Warehouse</div>
+                <div class="info-label">{{ t('modals.inventory.warehouse') }}</div>
                 <div class="info-value">{{ translateWarehouse(inventoryItem.location) }}</div>
               </div>
 
               <div class="info-item">
-                <div class="info-label">Status</div>
+                <div class="info-label">{{ t('modals.inventory.status') }}</div>
                 <div class="info-value">
                   <span :class="['badge', getStockStatusClass()]">
-                    {{ getStockStatus() }}
+                    {{ getStockStatusLabel() }}
                   </span>
                 </div>
               </div>
@@ -96,7 +96,7 @@
           </div>
 
           <div class="modal-footer">
-            <button class="btn-secondary" @click="close">Close</button>
+            <button type="button" class="btn-secondary" @click="close">{{ t('common.close') }}</button>
           </div>
         </div>
       </div>
@@ -105,14 +105,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from '../composables/useI18n'
+import { useModalA11y } from '../composables/useModalA11y'
+import { formatMoney } from '../utils/format'
 
-const { currentCurrency, translateProductName, translateWarehouse } = useI18n()
-
-const currencySymbol = computed(() => {
-  return currentCurrency.value === 'JPY' ? '¥' : '$'
-})
+const { t, currentCurrency, translateProductName, translateWarehouse } = useI18n()
 
 const props = defineProps({
   isOpen: {
@@ -137,9 +135,11 @@ const stockPercentage = computed(() => {
   return Math.round((props.inventoryItem.quantity_on_hand / props.inventoryItem.reorder_point) * 100)
 })
 
+const dialogRef = ref(null)
 const close = () => {
   emit('close')
 }
+useModalA11y(() => props.isOpen, dialogRef, close)
 
 const getStockStatus = () => {
   if (!props.inventoryItem) return 'Unknown'
@@ -150,6 +150,14 @@ const getStockStatus = () => {
   } else {
     return 'In Stock'
   }
+}
+
+// getStockStatus() returns stable English keys used for class mapping; only the label is translated.
+const getStockStatusLabel = () => {
+  const status = getStockStatus()
+  if (status === 'Low Stock') return t('modals.inventory.lowStock')
+  if (status === 'Adequate') return t('modals.inventory.adequate')
+  return t('modals.inventory.inStock')
 }
 
 const getStockStatusClass = () => {
@@ -446,5 +454,12 @@ const getSummaryCardClass = () => {
 .modal-enter-from .modal-container,
 .modal-leave-to .modal-container {
   transform: scale(0.95);
+}
+
+/* Visible keyboard focus for the close button and footer button */
+.close-button:focus-visible,
+.btn-secondary:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 </style>

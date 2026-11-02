@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import en from '../locales/en'
 import ja from '../locales/ja'
 
@@ -10,6 +10,10 @@ const translations = {
 // Load saved locale from localStorage, default to 'en'
 const savedLocale = localStorage.getItem('app-locale') || 'en'
 const currentLocale = ref(savedLocale)
+
+// Keep <html lang> in sync with the app language so screen readers pick the right voice and
+// pronunciation (it used to stay "en" after switching to Japanese)
+watch(currentLocale, (locale) => { document.documentElement.lang = locale }, { immediate: true })
 
 // Currency is automatically set based on locale (en -> USD, ja -> JPY)
 const currentCurrency = computed(() => {

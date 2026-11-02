@@ -2,82 +2,57 @@ import axios from 'axios'
 
 const API_BASE_URL = 'http://localhost:8001/api'
 
+// Build a query string from the global filters. Empty values and 'all' mean "no filter",
+// so they are dropped. Pass only the keys an endpoint actually supports.
+const buildQuery = (filters = {}, keys) => {
+  const params = new URLSearchParams()
+  for (const key of keys) {
+    const value = filters[key]
+    if (value && value !== 'all') params.append(key, value)
+  }
+  return params.toString()
+}
+
+const get = async (path, query = '') => {
+  const response = await axios.get(`${API_BASE_URL}${path}${query ? `?${query}` : ''}`)
+  return response.data
+}
+
+// Ids are encoded so a value containing "/" or "?" can never change which route is called
+const id = (value) => encodeURIComponent(value)
+
 export const api = {
-  async getInventory(filters = {}) {
-    const params = new URLSearchParams()
-    if (filters.warehouse && filters.warehouse !== 'all') params.append('warehouse', filters.warehouse)
-    if (filters.category && filters.category !== 'all') params.append('category', filters.category)
+  getInventory: (filters) => get('/inventory', buildQuery(filters, ['warehouse', 'category'])),
 
-    const response = await axios.get(`${API_BASE_URL}/inventory?${params.toString()}`)
-    return response.data
-  },
+  getInventoryItem: (itemId) => get(`/inventory/${id(itemId)}`),
 
-  async getInventoryItem(id) {
-    const response = await axios.get(`${API_BASE_URL}/inventory/${id}`)
-    return response.data
-  },
+  getOrders: (filters) => get('/orders', buildQuery(filters, ['warehouse', 'category', 'status', 'month'])),
 
-  async getOrders(filters = {}) {
-    const params = new URLSearchParams()
-    if (filters.warehouse && filters.warehouse !== 'all') params.append('warehouse', filters.warehouse)
-    if (filters.category && filters.category !== 'all') params.append('category', filters.category)
-    if (filters.status && filters.status !== 'all') params.append('status', filters.status)
-    if (filters.month && filters.month !== 'all') params.append('month', filters.month)
+  getOrder: (orderId) => get(`/orders/${id(orderId)}`),
 
-    const response = await axios.get(`${API_BASE_URL}/orders?${params.toString()}`)
-    return response.data
-  },
+  getDemandForecasts: () => get('/demand'),
 
-  async getOrder(id) {
-    const response = await axios.get(`${API_BASE_URL}/orders/${id}`)
-    return response.data
-  },
+  getBacklog: () => get('/backlog'),
 
-  async getDemandForecasts() {
-    const response = await axios.get(`${API_BASE_URL}/demand`)
-    return response.data
-  },
+  getDashboardSummary: (filters) =>
+    get('/dashboard/summary', buildQuery(filters, ['warehouse', 'category', 'status', 'month'])),
 
-  async getBacklog() {
-    const response = await axios.get(`${API_BASE_URL}/backlog`)
-    return response.data
-  },
+  getSpendingSummary: () => get('/spending/summary'),
 
-  async getDashboardSummary(filters = {}) {
-    const params = new URLSearchParams()
-    if (filters.warehouse && filters.warehouse !== 'all') params.append('warehouse', filters.warehouse)
-    if (filters.category && filters.category !== 'all') params.append('category', filters.category)
-    if (filters.status && filters.status !== 'all') params.append('status', filters.status)
-    if (filters.month && filters.month !== 'all') params.append('month', filters.month)
+  getMonthlySpending: () => get('/spending/monthly'),
 
-    const response = await axios.get(`${API_BASE_URL}/dashboard/summary?${params.toString()}`)
-    return response.data
-  },
+  getCategorySpending: () => get('/spending/categories'),
 
-  async getSpendingSummary() {
-    const response = await axios.get(`${API_BASE_URL}/spending/summary`)
-    return response.data
-  },
+  getTransactions: () => get('/spending/transactions'),
 
-  async getMonthlySpending() {
-    const response = await axios.get(`${API_BASE_URL}/spending/monthly`)
-    return response.data
-  },
+  // Reports are already per-period breakdowns, so they take every filter except month
+  getQuarterlyReports: (filters) =>
+    get('/reports/quarterly', buildQuery(filters, ['warehouse', 'category', 'status'])),
 
-  async getCategorySpending() {
-    const response = await axios.get(`${API_BASE_URL}/spending/categories`)
-    return response.data
-  },
+  getMonthlyTrends: (filters) =>
+    get('/reports/monthly-trends', buildQuery(filters, ['warehouse', 'category', 'status'])),
 
-  async getTransactions() {
-    const response = await axios.get(`${API_BASE_URL}/spending/transactions`)
-    return response.data
-  },
-
-  async getTasks() {
-    const response = await axios.get(`${API_BASE_URL}/tasks`)
-    return response.data
-  },
+  getTasks: () => get('/tasks'),
 
   async createTask(taskData) {
     const response = await axios.post(`${API_BASE_URL}/tasks`, taskData)
@@ -85,12 +60,12 @@ export const api = {
   },
 
   async deleteTask(taskId) {
-    const response = await axios.delete(`${API_BASE_URL}/tasks/${taskId}`)
+    const response = await axios.delete(`${API_BASE_URL}/tasks/${id(taskId)}`)
     return response.data
   },
 
   async toggleTask(taskId) {
-    const response = await axios.patch(`${API_BASE_URL}/tasks/${taskId}`)
+    const response = await axios.patch(`${API_BASE_URL}/tasks/${id(taskId)}`)
     return response.data
   },
 
@@ -99,10 +74,7 @@ export const api = {
     return response.data
   },
 
-  async getPurchaseOrderByBacklogItem(backlogItemId) {
-    const response = await axios.get(`${API_BASE_URL}/purchase-orders/${backlogItemId}`)
-    return response.data
-  }
+  getPurchaseOrderByBacklogItem: (backlogItemId) => get(`/purchase-orders/${id(backlogItemId)}`)
 }
 
 /**

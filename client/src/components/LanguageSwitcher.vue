@@ -1,9 +1,13 @@
 <template>
-  <div class="language-switcher">
+  <div ref="rootRef" class="language-switcher" @focusout="onFocusOut" @keydown="onKeydown">
     <button
+      ref="triggerRef"
+      type="button"
       class="language-button"
+      aria-haspopup="menu"
+      :aria-expanded="isDropdownOpen"
+      :aria-label="t('language.selectLanguage')"
       @click="toggleDropdown"
-      @blur="handleBlur"
     >
       <svg
         width="20"
@@ -11,6 +15,7 @@
         viewBox="0 0 20 20"
         fill="none"
         class="globe-icon"
+        aria-hidden="true"
       >
         <circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5"/>
         <path d="M3 10H17" stroke="currentColor" stroke-width="1.5"/>
@@ -25,18 +30,22 @@
         height="16"
         viewBox="0 0 16 16"
         fill="none"
+        aria-hidden="true"
       >
         <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </button>
 
-    <div v-if="isDropdownOpen" class="dropdown-menu">
+    <div v-if="isDropdownOpen" class="dropdown-menu" role="menu" :aria-label="t('language.selectLanguage')">
       <button
         v-for="locale in availableLocales"
         :key="locale"
+        type="button"
+        role="menuitem"
         class="dropdown-item"
         :class="{ active: currentLocale === locale }"
-        @mousedown.prevent="selectLanguage(locale)"
+        :aria-current="currentLocale === locale ? 'true' : undefined"
+        @click="selectLanguage(locale)"
       >
         <span class="language-name">{{ getLanguageName(locale) }}</span>
         <svg
@@ -46,6 +55,7 @@
           viewBox="0 0 18 18"
           fill="none"
           class="check-icon"
+          aria-hidden="true"
         >
           <path d="M4 9L7.5 12.5L14 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
@@ -55,12 +65,14 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useI18n } from '../composables/useI18n'
 
-const { currentLocale, setLocale, availableLocales, localeName } = useI18n()
+const { t, currentLocale, setLocale, availableLocales, localeName } = useI18n()
 
 const isDropdownOpen = ref(false)
+const rootRef = ref(null)
+const triggerRef = ref(null)
 
 const languageNames = {
   en: 'English',
@@ -75,16 +87,58 @@ const toggleDropdown = () => {
   isDropdownOpen.value = !isDropdownOpen.value
 }
 
-const handleBlur = () => {
-  // Delay to allow mousedown events on dropdown items to fire first
-  setTimeout(() => {
-    isDropdownOpen.value = false
-  }, 200)
+// Closing returns focus to the trigger so keyboard users keep their place
+const closeMenu = ({ restoreFocus = true } = {}) => {
+  if (!isDropdownOpen.value) return
+  isDropdownOpen.value = false
+  if (restoreFocus) triggerRef.value?.focus()
 }
+
+const getItems = () => [...(rootRef.value?.querySelectorAll('[role="menuitem"]') || [])]
+
+const onKeydown = (event) => {
+  if (!isDropdownOpen.value) return
+  if (event.key === 'Escape') {
+    event.stopPropagation()
+    closeMenu()
+    return
+  }
+  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+  event.preventDefault()
+  const items = getItems()
+  if (!items.length) return
+  const index = items.indexOf(document.activeElement)
+  const step = event.key === 'ArrowDown' ? 1 : -1
+  // From the trigger (index -1) ArrowDown goes to the first item and ArrowUp to the last
+  const next = index === -1 ? (step === 1 ? 0 : items.length - 1) : (index + step + items.length) % items.length
+  items[next].focus()
+}
+
+// Replaces the old blur + setTimeout, which closed the menu before Tab could reach the items.
+// relatedTarget is null when focus leaves the window; keep the menu open then.
+const onFocusOut = (event) => {
+  const next = event.relatedTarget
+  if (next && !rootRef.value?.contains(next)) closeMenu({ restoreFocus: false })
+}
+
+const onDocumentClick = (event) => {
+  if (!rootRef.value?.contains(event.target)) closeMenu({ restoreFocus: false })
+}
+
+// The document listener only exists while the menu is open
+watch(isDropdownOpen, (open) => {
+  if (open) {
+    // Defer so the click that opened the menu is not seen as an outside click
+    nextTick(() => document.addEventListener('click', onDocumentClick))
+  } else {
+    document.removeEventListener('click', onDocumentClick)
+  }
+})
+onBeforeUnmount(() => document.removeEventListener('click', onDocumentClick))
 
 const selectLanguage = (locale) => {
   setLocale(locale)
-  isDropdownOpen.value = false
+  closeMenu()
 }
 </script>
 
@@ -203,6 +257,16 @@ const selectLanguage = (locale) => {
   font-size: 0.875rem;
   font-weight: 500;
   color: #334155;
+}
+
+.dropdown-item:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
+.language-button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .dropdown-item:hover {

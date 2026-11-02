@@ -65,25 +65,30 @@ cd tests && uv run pytest backend/test_inventory.py -k filter   # single file / 
 
 ## Architecture
 
-- **Backend** (`server/main.py`, ~300 lines): single file holding the Pydantic models, CORS (`allow_origins=["*"]`), and all routes. `server/mock_data.py` loads every `server/data/*.json` once at import time into module-level lists; routes filter those lists in Python. Nothing persists, so a restart resets state. `generate_data.py` regenerates the JSON.
+- **Backend** (`server/main.py`, ~300 lines): single file holding the Pydantic models, CORS (local frontend origins only), gzip, and all routes (including in-memory tasks and purchase orders). `server/mock_data.py` loads every `server/data/*.json` once at import time into module-level lists; routes filter those lists in Python. Nothing persists, so a restart resets state. `generate_data.py` regenerates the JSON.
 - **Frontend** (`client/src`): routes are registered in `main.js` (Dashboard, Inventory, Orders, Demand, Spending, Reports). All HTTP goes through `api.js`, which hardcodes `http://localhost:8001/api` and drops any filter equal to `'all'`.
 - **Filters**: `composables/useFilters.js` is a module-level singleton (shared refs, not per-component). Its `selectedPeriod` is sent to the API as `month`, and `selectedLocation` as `warehouse`. `FilterBar.vue` edits it, and views re-fetch via `getCurrentFilters()`.
+- **Shared helpers** (use these instead of re-implementing): `utils/format.js` (`formatMoney` converts USD to the active currency, so never prefix a raw number with a symbol; `formatDate`; `monthKey` buckets by slicing the date string, never via UTC), `composables/useLoader.js` (loading/error state with stale-response protection; pair with `components/ErrorState.vue`), `composables/useModalA11y.js` (Escape, focus trap and focus restore for every modal dialog).
 - **i18n**: `composables/useI18n.js` with `locales/en.js` and `locales/ja.js`. New UI strings need entries in both.
 - **Auth/profile/tasks UI** (`useAuth.js`, `ProfileMenu`, `TasksModal`) is client-side scaffolding hosted in `App.vue`.
 
 ## Known gaps (verify before relying on these)
 
-- `api.js` calls `/api/tasks` (GET/POST/PATCH/DELETE) and purchase-order endpoints, but `main.py` only has GET routes and no tasks or purchase-order routes. The dev server logs a 404 for tasks on load.
-- `Dashboard.vue` renders `<PurchaseOrderModal>`, but that component does not exist in `client/src/components/`, which produces a Vue "Failed to resolve component" warning.
-- `views/Backlog.vue` exists but has no route in `main.js`.
+- `views/Backlog.vue` exists but has no route in `main.js` (unreachable, still has hardcoded English).
+- There is no authentication: the API is anonymous and the client-side "login" is cosmetic. It is bound to `127.0.0.1` and CORS allows only `http://localhost:3000` / `127.0.0.1:3000`. Add real auth before loading real data or deploying.
+- Tasks and purchase orders live in memory (`tasks_db`, the `purchase_orders` list) and reset on a server restart.
+- The spending endpoints (`/api/spending/*`) are pre-aggregated and cannot be filtered by warehouse/category/status; `/api/reports/*` accept warehouse/category/status but not month. The UI shows a note when a filter does not apply.
 - `tests/README.md` lists `test_orders.py`, which is not in the repo.
 
 ## API Endpoints
 - `GET /api/inventory` - Filters: warehouse, category
 - `GET /api/orders` - Filters: warehouse, category, status, month
 - `GET /api/dashboard/summary` - All filters
-- `GET /api/demand`, `/api/backlog` - No filters
+- `GET /api/demand`, `/api/backlog` - No filters (backlog items include `has_purchase_order` and `purchase_order_id`)
+- `GET/POST/PATCH/DELETE /api/tasks` - In-memory tasks (ids start at 1000; PATCH toggles pending/completed)
+- `POST /api/purchase-orders`, `GET /api/purchase-orders/{backlog_item_id}` - In-memory purchase orders (409 if the item already has one)
 - `GET /api/spending/*` - Summary, monthly, categories, transactions
+- `GET /api/reports/quarterly`, `/api/reports/monthly-trends` - Filters: warehouse, category, status
 
 ## Code Comments
 Always document non-obvious logic changes with comments explaining why (workarounds, edge cases, data-shape assumptions). Skip comments on obvious code.

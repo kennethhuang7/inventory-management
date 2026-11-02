@@ -62,7 +62,9 @@ export default {
       daysDelayed: '遅延日数',
       priority: '優先度',
       unitsShort: '単位不足',
-      days: '日'
+      days: '日',
+      createPO: '発注書を作成',
+      viewPO: '発注書を表示'
     },
     topProducts: {
       title: '収益別トップ製品',
@@ -138,6 +140,42 @@ export default {
     }
   },
 
+  // Reports page
+  reports: {
+    title: 'パフォーマンスレポート',
+    description: '四半期の業績指標と月次トレンドを表示します',
+    periodNotApplied: 'これらのレポートは常に全期間を表示します。期間フィルターは適用されません。',
+    loading: 'レポートを読み込み中...',
+    quarterlyTitle: '四半期パフォーマンス',
+    quarter: '四半期',
+    totalOrders: '注文総数',
+    totalRevenue: '総売上',
+    avgOrderValue: '平均注文額',
+    fulfillmentRate: '出荷達成率',
+    trendTitle: '月次売上トレンド',
+    momTitle: '前月比分析',
+    month: '月',
+    orders: '注文数',
+    revenue: '売上',
+    change: '増減',
+    growthRate: '成長率',
+    notAvailable: 'なし',
+    ytdRevenue: '総売上(年初来)',
+    avgMonthlyRevenue: '月平均売上',
+    ytdOrders: '注文総数(年初来)',
+    bestQuarter: '最高業績の四半期'
+  },
+
+  // Spending page additions
+  spending: {
+    filtersNote:
+      '予算、カテゴリ別支出、取引の数値は倉庫・カテゴリ・ステータスのフィルターの影響を受けません。注文売上のみが対象です。',
+    transactionDetails: '取引の詳細',
+    revenueBarLabel: '{month}の売上: {amount}',
+    costBarLabel: '{month}のコスト: {amount}',
+    costFlowBarLabel: '{month}: コスト合計 {amount}。コスト詳細を開く。'
+  },
+
   // Finance/Spending
   finance: {
     title: '財務ダッシュボード',
@@ -204,7 +242,8 @@ export default {
     category: 'カテゴリ',
     orderStatus: '注文ステータス',
     all: 'すべて',
-    allMonths: 'すべての月'
+    allMonths: 'すべての月',
+    reset: 'フィルターをリセット'
   },
 
   // Statuses
@@ -287,7 +326,8 @@ export default {
   profile: {
     profileDetails: 'プロフィール詳細',
     myTasks: 'マイタスク',
-    logout: 'ログアウト'
+    logout: 'ログアウト',
+    menu: 'アカウントメニュー'
   },
 
   // Profile Details Modal
@@ -310,7 +350,80 @@ export default {
     priority: '優先度',
     dueDate: '期限',
     addTask: 'タスクを追加',
-    noTasks: 'タスクがありません。上記からタスクを追加してください！'
+    noTasks: 'タスクがありません。上記からタスクを追加してください！',
+    deleteTask: 'タスクを削除',
+    deleteTaskNamed: 'タスクを削除: {title}',
+    toggleTaskNamed: '完了にする: {title}',
+    errors: {
+      load: 'タスクを読み込めませんでした。',
+      add: 'タスクを追加できませんでした。もう一度お試しください。',
+      delete: 'タスクを削除できませんでした。もう一度お試しください。',
+      toggle: 'タスクを更新できませんでした。もう一度お試しください。'
+    }
+  },
+
+  // Detail modals
+  modals: {
+    notAvailable: 'なし',
+    units: '{count}個',
+    sku: 'SKU: {sku}',
+    inventory: {
+      title: '在庫アイテム詳細',
+      quantityOnHand: '手持在庫数',
+      stockLevel: '在庫レベル',
+      vsReorder: '再注文点比',
+      category: 'カテゴリ',
+      location: '場所',
+      reorderPoint: '再注文点',
+      unitsRemaining: '残数量',
+      unitCost: '単価',
+      totalValue: '総価値',
+      warehouse: '倉庫',
+      status: 'ステータス',
+      lowStock: '在庫少',
+      adequate: '適正',
+      inStock: '在庫あり'
+    },
+    backlog: {
+      title: '在庫不足の詳細',
+      priorityBadge: '優先度: {priority}',
+      high: '高',
+      medium: '中',
+      low: '低',
+      shortageAmount: '不足数量',
+      daysDelayed: '遅延日数',
+      daysValue: '{count}日',
+      orderId: '注文ID',
+      itemSku: '商品SKU',
+      quantityNeeded: '必要数量',
+      quantityAvailable: '利用可能数量',
+      expectedDate: '入荷予定日',
+      status: 'ステータス',
+      backordered: '入荷待ち'
+    },
+    cost: {
+      title: '{month}のコスト内訳',
+      totalCosts: '総コスト',
+      procurement: '調達',
+      operational: '運営',
+      labor: '人件費',
+      overhead: '間接費',
+      percentOfTotal: '全体の{percent}%'
+    },
+    product: {
+      title: '製品詳細',
+      category: 'カテゴリ',
+      warehouse: '倉庫',
+      unitsOrdered: '注文数量',
+      totalRevenue: '総売上',
+      currentStock: '現在の在庫',
+      reorderPoint: '再注文点',
+      firstOrderDate: '初回注文日',
+      stockStatus: '在庫状況',
+      inStock: '在庫あり',
+      lowStock: '在庫少',
+      outOfStock: '在庫切れ'
+    }
   },
 
   // Language
@@ -318,6 +431,38 @@ export default {
     english: 'English',
     japanese: '日本語',
     selectLanguage: '言語を選択'
+  },
+
+  // Purchase orders
+  purchaseOrder: {
+    createTitle: '発注書を作成',
+    viewTitle: '発注書',
+    item: '品目',
+    supplier: '仕入先名',
+    quantity: '数量',
+    unitCost: '単価 (USD)',
+    unitCostHint: '表示通貨に関わらず、米ドルで入力してください。',
+    expectedDelivery: '納品予定日',
+    notes: '備考 (任意)',
+    notesLabel: '備考',
+    submit: '発注書を作成',
+    submitting: '作成中...',
+    poId: '発注書ID',
+    total: '合計',
+    status: 'ステータス',
+    createdDate: '作成日',
+    unitCostDisplay: '単価',
+    noNotes: 'なし',
+    loadFailed: '発注書を読み込めませんでした。',
+    errors: {
+      supplierRequired: '仕入先名は必須です。',
+      supplierTooLong: '仕入先名は120文字以内で入力してください。',
+      quantityInvalid: '数量は1から1,000,000までの整数で入力してください。',
+      unitCostInvalid: '単価は0より大きい値にしてください。',
+      dateRequired: '納品予定日を選択してください。',
+      dateInPast: '納品予定日に過去の日付は指定できません。',
+      notesTooLong: '備考は500文字以内で入力してください。'
+    }
   },
 
   // Common
@@ -332,7 +477,11 @@ export default {
     search: '検索',
     filter: 'フィルター',
     export: 'エクスポート',
-    items: '件'
+    items: '件',
+    retry: '再試行',
+    loadFailed: 'データを読み込めませんでした。',
+    loadFailedStale: '更新できませんでした。最後に読み込まれたデータを表示しています。',
+    actions: '操作'
   },
 
   // Product Names

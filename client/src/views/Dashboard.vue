@@ -5,8 +5,10 @@
     </div>
 
     <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
-    <div v-else>
+    <!-- After the first load the content stays mounted; filter changes only dim it -->
+    <div v-else :class="{ refreshing }" :aria-busy="refreshing">
+      <ErrorState v-if="error" :message="errorMessage" :stale="hasLoaded" @retry="loadData" />
+      <template v-if="hasLoaded">
       <!-- Key Performance Indicators -->
       <div class="kpi-section">
         <h3 class="section-title">{{ t('dashboard.kpi.title') }}</h3>
@@ -48,8 +50,8 @@
             <div class="kpi-header">
               <span class="kpi-label">{{ t(selectedPeriod === 'all' ? 'dashboard.kpi.revenueYTD' : 'dashboard.kpi.revenueMTD') }}</span>
             </div>
-            <div class="kpi-value">{{ formatCurrency(Math.round(summary.total_orders_value), selectedCurrency) }}</div>
-            <div class="kpi-goal">{{ t('dashboard.kpi.goal') }}: {{ formatCurrency(revenueGoal, selectedCurrency) }} ({{ summary.total_orders_value > revenueGoal ? '+' : '' }}{{ ((summary.total_orders_value / revenueGoal - 1) * 100).toFixed(1) }}%)</div>
+            <div class="kpi-value">{{ formatMoney(Math.round(summary.total_orders_value), selectedCurrency) }}</div>
+            <div class="kpi-goal">{{ t('dashboard.kpi.goal') }}: {{ formatMoney(revenueGoal, selectedCurrency) }} ({{ summary.total_orders_value > revenueGoal ? '+' : '' }}{{ ((summary.total_orders_value / revenueGoal - 1) * 100).toFixed(1) }}%)</div>
             <div class="kpi-progress-bar">
               <div class="kpi-progress" :style="{ width: Math.min((summary.total_orders_value / revenueGoal * 100), 100) + '%' }"></div>
             </div>
@@ -116,11 +118,11 @@
               <div class="order-health-metrics">
                 <div class="health-metric">
                   <div class="health-metric-label">{{ t('dashboard.orderHealth.revenue') }}</div>
-                  <div class="health-metric-value">{{ formatCurrency(orderHealthMetrics.totalValue, selectedCurrency) }}</div>
+                  <div class="health-metric-value">{{ formatMoney(orderHealthMetrics.totalValue, selectedCurrency) }}</div>
                 </div>
                 <div class="health-metric">
                   <div class="health-metric-label">{{ t('dashboard.orderHealth.avgOrderValue') }}</div>
-                  <div class="health-metric-value">{{ formatCurrency(orderHealthMetrics.avgOrderValue, selectedCurrency) }}</div>
+                  <div class="health-metric-value">{{ formatMoney(orderHealthMetrics.avgOrderValue, selectedCurrency) }}</div>
                 </div>
                 <div class="health-metric">
                   <div class="health-metric-label">{{ t('dashboard.orderHealth.onTimeRate') }}</div>
@@ -148,7 +150,7 @@
                 <div class="h-bar-label">{{ translateCategory(cat.name) }}</div>
                 <div class="h-bar-container">
                   <div class="h-bar" :style="{ width: (cat.value / maxCategoryValue * 100) + '%', background: cat.color }">
-                    <span class="h-bar-value">{{ selectedCurrency === 'JPY' ? formatCurrency(cat.value, selectedCurrency) : `$${(cat.value / 1000).toFixed(1)}K` }}</span>
+                    <span class="h-bar-value">{{ formatMoney(cat.value, selectedCurrency, { compact: true }) }}</span>
                   </div>
                 </div>
               </div>
@@ -180,7 +182,7 @@
                   <th>{{ t('dashboard.inventoryShortages.shortage') }}</th>
                   <th>{{ t('dashboard.inventoryShortages.daysDelayed') }}</th>
                   <th>{{ t('dashboard.inventoryShortages.priority') }}</th>
-                  <th>Actions</th>
+                  <th>{{ t('common.actions') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -188,7 +190,7 @@
                   v-for="item in backlogItems"
                   :key="item.id"
                 >
-                  <td @click="showBacklogDetail(item)" style="cursor: pointer;"><strong>{{ item.order_id }}</strong></td>
+                  <td @click="showBacklogDetail(item)" style="cursor: pointer;"><button type="button" class="row-link" @click.stop="showBacklogDetail(item)">{{ item.order_id }}</button></td>
                   <td @click="showBacklogDetail(item)" style="cursor: pointer;"><strong>{{ item.item_sku }}</strong></td>
                   <td @click="showBacklogDetail(item)" style="cursor: pointer;">{{ translateProductName(item.item_name) }}</td>
                   <td @click="showBacklogDetail(item)" style="cursor: pointer;">{{ item.quantity_needed }}</td>
@@ -210,18 +212,20 @@
                   </td>
                   <td>
                     <button
-                      v-if="!item.purchase_order_id"
+                      v-if="!item.has_purchase_order"
+                      type="button"
                       @click.stop="openPOModal(item)"
                       class="po-button create"
                     >
-                      Create PO
+                      {{ t('dashboard.inventoryShortages.createPO') }}
                     </button>
                     <button
                       v-else
+                      type="button"
                       @click.stop="viewPO(item)"
                       class="po-button view"
                     >
-                      View PO
+                      {{ t('dashboard.inventoryShortages.viewPO') }}
                     </button>
                   </td>
                 </tr>
@@ -256,11 +260,11 @@
                   @click="showProductDetail(item)"
                 >
                   <td><strong>{{ translateProductName(item.name) }}</strong></td>
-                  <td>{{ item.sku }}</td>
+                  <td><button type="button" class="row-link" @click.stop="showProductDetail(item)">{{ item.sku }}</button></td>
                   <td>{{ translateCategory(item.category) }}</td>
                   <td>{{ item.unitsOrdered }}</td>
-                  <td><strong>{{ formatCurrency(item.revenue, selectedCurrency) }}</strong></td>
-                  <td>{{ formatDate(item.firstOrderDate) }}</td>
+                  <td><strong>{{ formatMoney(item.revenue, selectedCurrency) }}</strong></td>
+                  <td>{{ formatDate(item.firstOrderDate, currentLocale) || '-' }}</td>
                   <td>
                     <span :class="['badge', getStockBadge(item.stockLevel)]">
                       {{ translateStockLevel(item.stockLevel) }}
@@ -272,6 +276,7 @@
           </div>
         </div>
       </div>
+      </template>
     </div>
 
     <ProductDetailModal
@@ -301,20 +306,23 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { api } from '../api'
 import { useFilters } from '../composables/useFilters'
 import { useI18n } from '../composables/useI18n'
-import { formatCurrency } from '../utils/currency'
+import { useLoader } from '../composables/useLoader'
+import { formatMoney, formatDate as formatDateShared } from '../utils/format'
 import ProductDetailModal from '../components/ProductDetailModal.vue'
 import BacklogDetailModal from '../components/BacklogDetailModal.vue'
+import PurchaseOrderModal from '../components/PurchaseOrderModal.vue'
+import ErrorState from '../components/ErrorState.vue'
 
 export default {
   name: 'Dashboard',
   components: {
     ProductDetailModal,
     BacklogDetailModal,
+    PurchaseOrderModal,
+    ErrorState,
   },
   setup() {
-    const { t, currentCurrency, translateProductName, translateWarehouse } = useI18n()
-    const loading = ref(true)
-    const error = ref(null)
+    const { t, currentLocale, currentCurrency, translateProductName, translateWarehouse } = useI18n()
     const summary = ref({})
     const allOrders = ref([])
     const inventoryItems = ref([])
@@ -347,13 +355,6 @@ export default {
         return monthlyGoal * 12 // $9,600,000 for the full year
       }
       return monthlyGoal // $800,000 for a single month
-    })
-
-    const revenueGoalDisplay = computed(() => {
-      if (revenueGoal.value >= 1000000) {
-        return `$${(revenueGoal.value / 1000000).toFixed(1)}M`
-      }
-      return `$${(revenueGoal.value / 1000).toFixed(0)}K`
     })
 
     const statusData = computed(() => {
@@ -450,40 +451,13 @@ export default {
       return Math.max(...categoryData.value.map(c => c.value))
     })
 
-    const orderTrendData = computed(() => {
-      // Group orders by month from the actual data
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-      // Initialize all months with 0 orders
-      const monthMap = {}
-      monthNames.forEach(month => {
-        monthMap[month] = { month, orders: 0 }
+    // Index inventory by sku once instead of scanning the array for every order line
+    const inventoryBySku = computed(() => {
+      const map = new Map()
+      inventoryItems.value.forEach(i => {
+        if (!map.has(i.sku)) map.set(i.sku, i)
       })
-
-      // Count orders for each month
-      if (Array.isArray(allOrders.value)) {
-        allOrders.value.forEach(order => {
-          if (order && order.order_date) {
-            const date = new Date(order.order_date)
-            const monthIndex = date.getMonth()
-            // Check if monthIndex is valid (0-11)
-            if (!isNaN(monthIndex) && monthIndex >= 0 && monthIndex <= 11) {
-              const monthName = monthNames[monthIndex]
-              monthMap[monthName].orders++
-            }
-          }
-        })
-      }
-
-      // Return all months in order
-      return monthNames.map(month => monthMap[month])
-    })
-
-    const maxOrderCount = computed(() => {
-      if (orderTrendData.value.length === 0) return 10
-      const max = Math.max(...orderTrendData.value.map(d => d.orders))
-      // Round up to nearest 10 for cleaner axis, minimum 10
-      return Math.max(10, Math.ceil(max / 10) * 10)
+      return map
     })
 
     const topProducts = computed(() => {
@@ -498,7 +472,7 @@ export default {
 
             // Find matching inventory item to get full product details
             // Note: inventoryItems is also filtered by API based on: warehouse, category
-            const invItem = inventoryItems.value.find(i => i.sku === sku)
+            const invItem = inventoryBySku.value.get(sku)
 
             // Skip products that don't match current inventory filters
             // (e.g., if filtering by warehouse A, don't show products from warehouse B)
@@ -558,26 +532,32 @@ export default {
       return allBacklogItems.value.filter(b => validSkus.has(b.item_sku))
     })
 
-    const loadData = async () => {
+    // Summary/orders/inventory depend on the filters; the backlog does not (see loadBacklog)
+    const { loading, refreshing, hasLoaded, error, errorMessage, run: loadData } = useLoader(async (isCurrent) => {
+      const filters = getCurrentFilters()
+
+      const [summaryData, ordersResult, inventoryData] = await Promise.all([
+        api.getDashboardSummary(filters),
+        api.getOrders(filters),
+        api.getInventory(filters)
+      ])
+      if (!isCurrent()) return
+
+      summary.value = summaryData
+      allOrders.value = ordersResult
+      inventoryItems.value = inventoryData
+    })
+
+    // The backlog ignores every filter, so it is fetched on mount and after a PO is created,
+    // not on each filter change. A failure here must not blank the rest of the dashboard.
+    let backlogRequest = 0
+    const loadBacklog = async () => {
+      const mine = ++backlogRequest
       try {
-        loading.value = true
-        const filters = getCurrentFilters()
-
-        const [summaryData, ordersData, inventoryData, backlogData] = await Promise.all([
-          api.getDashboardSummary(filters),
-          api.getOrders(filters),
-          api.getInventory(filters),
-          api.getBacklog()
-        ])
-
-        summary.value = summaryData
-        allOrders.value = ordersData
-        inventoryItems.value = inventoryData
-        allBacklogItems.value = backlogData
+        const data = await api.getBacklog()
+        if (mine === backlogRequest) allBacklogItems.value = data
       } catch (err) {
-        error.value = 'Failed to load dashboard data: ' + err.message
-      } finally {
-        loading.value = false
+        console.error('Failed to load backlog', err)
       }
     }
 
@@ -632,14 +612,6 @@ export default {
       return priorityMap[priority] || priority
     }
 
-    const formatDate = (dateString) => {
-      if (!dateString) return '-'
-      const { currentLocale } = useI18n()
-      const locale = currentLocale.value === 'ja' ? 'ja-JP' : 'en-US'
-      const date = new Date(dateString)
-      return date.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })
-    }
-
     const showProductDetail = (product) => {
       selectedProduct.value = product
       showProductModal.value = true
@@ -663,13 +635,15 @@ export default {
     }
 
     const handlePOCreated = (poData) => {
-      // Update the backlog item with the new PO ID
-      const item = allBacklogItems.value.find(b => b.id === poData.backlog_item_id)
+      // The API returns backlog_item_id as a string while backlog ids may be numeric, so compare as strings
+      const item = allBacklogItems.value.find(b => String(b.id) === String(poData.backlog_item_id))
       if (item) {
+        item.has_purchase_order = true
         item.purchase_order_id = poData.id
-        item.purchase_order = poData
       }
       showPOModal.value = false
+      // Re-sync with the server's view of which items have a PO
+      loadBacklog()
     }
 
     // Watch for filter changes and reload data
@@ -677,12 +651,19 @@ export default {
       loadData()
     })
 
-    onMounted(loadData)
+    onMounted(() => {
+      loadData()
+      loadBacklog()
+    })
 
     return {
       t,
       loading,
+      refreshing,
+      hasLoaded,
       error,
+      errorMessage,
+      loadData,
       summary,
       ordersData,
       fillRate,
@@ -690,8 +671,6 @@ export default {
       orderHealthMetrics,
       categoryData,
       maxCategoryValue,
-      orderTrendData,
-      maxOrderCount,
       topProducts,
       backlogItems,
       calculatePercentage,
@@ -700,9 +679,9 @@ export default {
       translateCategory,
       translateStockLevel,
       translatePriority,
-      formatDate,
+      formatDate: formatDateShared,
+      currentLocale,
       revenueGoal,
-      revenueGoalDisplay,
       showProductModal,
       selectedProduct,
       showProductDetail,
@@ -711,7 +690,7 @@ export default {
       showBacklogDetail,
       selectedPeriod,
       selectedCurrency: currentCurrency,
-      formatCurrency,
+      formatMoney,
       Math,
       translateProductName,
       translateWarehouse,
@@ -727,6 +706,34 @@ export default {
 </script>
 
 <style scoped>
+/* Dim stale content while a filter change reloads, instead of replacing the page */
+.refreshing {
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+
+.row-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.row-link:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.po-button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;

@@ -2,11 +2,11 @@
   <Teleport to="body">
     <Transition name="modal">
       <div v-if="isOpen" class="modal-overlay" @click="close">
-        <div class="modal-container" @click.stop>
+        <div ref="dialogRef" class="modal-container" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title" tabindex="-1" @click.stop>
           <div class="modal-header">
-            <h3 class="modal-title">{{ t('profileDetails.title') }}</h3>
-            <button class="close-button" @click="close">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <h3 id="profile-modal-title" class="modal-title">{{ t('profileDetails.title') }}</h3>
+            <button type="button" class="close-button" :aria-label="t('common.close')" @click="close">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               </svg>
             </button>
@@ -45,7 +45,7 @@
 
                 <div class="info-item">
                   <div class="info-label">{{ t('profileDetails.joinDate') }}</div>
-                  <div class="info-value">{{ formatDate(currentUser.joinDate) }}</div>
+                  <div class="info-value">{{ formatDate(currentUser.joinDate, currentLocale, { year: 'numeric', month: 'long', day: 'numeric' }) }}</div>
                 </div>
 
                 <div class="info-item">
@@ -57,7 +57,7 @@
           </div>
 
           <div class="modal-footer">
-            <button class="btn-secondary" @click="close">{{ t('profileDetails.close') }}</button>
+            <button type="button" class="btn-secondary" @click="close">{{ t('profileDetails.close') }}</button>
           </div>
         </div>
       </div>
@@ -66,8 +66,11 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import { useI18n } from '../composables/useI18n'
+import { useModalA11y } from '../composables/useModalA11y'
+import { formatDate } from '../utils/format'
 
 const { currentUser, getInitials } = useAuth()
 const { t, currentLocale } = useI18n()
@@ -81,19 +84,11 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
+const dialogRef = ref(null)
 const close = () => {
   emit('close')
 }
-
-const formatDate = (dateString) => {
-  const date = new Date(dateString)
-  const locale = currentLocale.value === 'ja' ? 'ja-JP' : 'en-US'
-  return date.toLocaleDateString(locale, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
+useModalA11y(() => props.isOpen, dialogRef, close)
 </script>
 
 <style scoped>
@@ -276,5 +271,12 @@ const formatDate = (dateString) => {
 .modal-enter-from .modal-container,
 .modal-leave-to .modal-container {
   transform: scale(0.95);
+}
+
+/* Visible keyboard focus for the close button and footer button */
+.close-button:focus-visible,
+.btn-secondary:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 </style>

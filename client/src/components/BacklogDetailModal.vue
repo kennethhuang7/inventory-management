@@ -2,11 +2,11 @@
   <Teleport to="body">
     <Transition name="modal">
       <div v-if="isOpen && backlogItem" class="modal-overlay" @click="close">
-        <div class="modal-container" @click.stop>
+        <div ref="dialogRef" class="modal-container" role="dialog" aria-modal="true" aria-labelledby="backlog-modal-title" tabindex="-1" @click.stop>
           <div class="modal-header">
-            <h3 class="modal-title">Inventory Shortage Details</h3>
-            <button class="close-button" @click="close">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <h3 id="backlog-modal-title" class="modal-title">{{ t('modals.backlog.title') }}</h3>
+            <button type="button" class="close-button" :aria-label="t('common.close')" @click="close">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               </svg>
             </button>
@@ -15,68 +15,68 @@
           <div class="modal-body">
             <div class="shortage-header">
               <div class="shortage-icon">
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                <svg aria-hidden="true" width="48" height="48" viewBox="0 0 48 48" fill="none">
                   <path d="M24 8L24 28M24 34L24 36" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
                   <circle cx="24" cy="24" r="18" stroke="currentColor" stroke-width="3"/>
                 </svg>
               </div>
               <div class="shortage-title-section">
                 <h4 class="item-name">{{ translateProductName(backlogItem.item_name) }}</h4>
-                <div class="item-sku">SKU: {{ backlogItem.item_sku }}</div>
+                <div class="item-sku">{{ t('modals.sku', { sku: backlogItem.item_sku }) }}</div>
               </div>
               <span class="priority-badge" :class="backlogItem.priority">
-                {{ backlogItem.priority }} Priority
+                {{ t('modals.backlog.priorityBadge', { priority: priorityLabel }) }}
               </span>
             </div>
 
             <div class="shortage-summary">
               <div class="summary-card danger">
-                <div class="summary-label">Shortage Amount</div>
-                <div class="summary-value">{{ shortage }} units</div>
+                <div class="summary-label">{{ t('modals.backlog.shortageAmount') }}</div>
+                <div class="summary-value">{{ t('modals.units', { count: shortage }) }}</div>
               </div>
               <div class="summary-card warning">
-                <div class="summary-label">Days Delayed</div>
-                <div class="summary-value">{{ backlogItem.days_delayed }} days</div>
+                <div class="summary-label">{{ t('modals.backlog.daysDelayed') }}</div>
+                <div class="summary-value">{{ t('modals.backlog.daysValue', { count: backlogItem.days_delayed }) }}</div>
               </div>
             </div>
 
             <div class="info-grid">
               <div class="info-item">
-                <div class="info-label">Order ID</div>
+                <div class="info-label">{{ t('modals.backlog.orderId') }}</div>
                 <div class="info-value order-id">{{ backlogItem.order_id }}</div>
               </div>
 
               <div class="info-item">
-                <div class="info-label">Item SKU</div>
+                <div class="info-label">{{ t('modals.backlog.itemSku') }}</div>
                 <div class="info-value sku">{{ backlogItem.item_sku }}</div>
               </div>
 
               <div class="info-item">
-                <div class="info-label">Quantity Needed</div>
-                <div class="info-value">{{ backlogItem.quantity_needed }} units</div>
+                <div class="info-label">{{ t('modals.backlog.quantityNeeded') }}</div>
+                <div class="info-value">{{ t('modals.units', { count: backlogItem.quantity_needed }) }}</div>
               </div>
 
               <div class="info-item">
-                <div class="info-label">Quantity Available</div>
-                <div class="info-value">{{ backlogItem.quantity_available }} units</div>
+                <div class="info-label">{{ t('modals.backlog.quantityAvailable') }}</div>
+                <div class="info-value">{{ t('modals.units', { count: backlogItem.quantity_available }) }}</div>
               </div>
 
               <div class="info-item">
-                <div class="info-label">Expected Date</div>
-                <div class="info-value">{{ formatDate(backlogItem.expected_date) }}</div>
+                <div class="info-label">{{ t('modals.backlog.expectedDate') }}</div>
+                <div class="info-value">{{ formatDate(backlogItem.expected_date, currentLocale, { year: 'numeric', month: 'long', day: 'numeric' }) || t('modals.notAvailable') }}</div>
               </div>
 
               <div class="info-item">
-                <div class="info-label">Status</div>
+                <div class="info-label">{{ t('modals.backlog.status') }}</div>
                 <div class="info-value">
-                  <span class="badge danger">Backordered</span>
+                  <span class="badge danger">{{ t('modals.backlog.backordered') }}</span>
                 </div>
               </div>
             </div>
           </div>
 
           <div class="modal-footer">
-            <button class="btn-secondary" @click="close">Close</button>
+            <button type="button" class="btn-secondary" @click="close">{{ t('common.close') }}</button>
           </div>
         </div>
       </div>
@@ -85,10 +85,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from '../composables/useI18n'
+import { useModalA11y } from '../composables/useModalA11y'
+import { formatDate } from '../utils/format'
 
-const { translateProductName } = useI18n()
+const { t, currentLocale, translateProductName } = useI18n()
 
 const props = defineProps({
   isOpen: {
@@ -108,19 +110,17 @@ const shortage = computed(() => {
   return props.backlogItem.quantity_needed - props.backlogItem.quantity_available
 })
 
+const priorityLabel = computed(() => {
+  const p = props.backlogItem?.priority
+  // Unknown priorities fall back to the raw value rather than a missing-key string
+  return ['high', 'medium', 'low'].includes(p) ? t(`modals.backlog.${p}`) : (p || '')
+})
+
+const dialogRef = ref(null)
 const close = () => {
   emit('close')
 }
-
-const formatDate = (dateString) => {
-  if (!dateString) return 'N/A'
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
+useModalA11y(() => props.isOpen, dialogRef, close)
 </script>
 
 <style scoped>
@@ -376,5 +376,12 @@ const formatDate = (dateString) => {
 .modal-enter-from .modal-container,
 .modal-leave-to .modal-container {
   transform: scale(0.95);
+}
+
+/* Visible keyboard focus for the close button and footer button */
+.close-button:focus-visible,
+.btn-secondary:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 </style>
