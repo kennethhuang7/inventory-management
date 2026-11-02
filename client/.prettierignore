@@ -1,0 +1,4 @@
+dist/
+node_modules/
+# Not yet Prettier-formatted; remove after a one-time format pass
+**/*.vue
