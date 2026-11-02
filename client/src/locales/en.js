@@ -426,6 +426,14 @@ export default {
     }
   },
 
+  // Theme
+  theme: {
+    darkMode: 'Dark mode',
+    lightMode: 'Light mode',
+    switchToDark: 'Switch to dark mode',
+    switchToLight: 'Switch to light mode'
+  },
+
   // Language
   language: {
     english: 'English',

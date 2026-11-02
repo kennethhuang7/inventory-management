@@ -1,6 +1,7 @@
 import axios from 'axios'
 
-const API_BASE_URL = 'http://localhost:8001/api'
+// Defaults to the local backend; set VITE_API_BASE_URL=/api to go through the Vite proxy instead
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001/api'
 
 // Build a query string from the global filters. Empty values and 'all' mean "no filter",
 // so they are dropped. Pass only the keys an endpoint actually supports.

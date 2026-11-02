@@ -32,28 +32,28 @@ const { t } = useI18n()
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: #fef2f2;
+  background: var(--color-danger-soft);
   border: 1px solid #b91c1c;
   border-radius: 8px;
-  color: #b91c1c;
+  color: var(--color-negative);
 }
 .icon { flex-shrink: 0; }
 .text { flex: 1; min-width: 0; }
 .headline { font-size: 14px; font-weight: 600; }
-.detail { margin: 2px 0 0; font-size: 13px; color: #64748b; }
+.detail { margin: 2px 0 0; font-size: 13px; color: var(--color-text-muted); }
 .retry {
   flex-shrink: 0;
   padding: 6px 14px;
-  background: #fff;
-  color: #0f172a;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
 }
-.retry:hover { background: #f1f5f9; }
-.retry:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.retry:hover { background: var(--color-surface-muted); }
+.retry:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 @media (max-width: 480px) {
   .error-state { flex-direction: column; align-items: flex-start; }
 }

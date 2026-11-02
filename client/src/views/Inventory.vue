@@ -295,7 +295,7 @@ export default {
 }
 
 .page-header p {
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 0.875rem;
 }
 
@@ -305,13 +305,13 @@ export default {
   align-items: center;
   gap: 1.5rem;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .card-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--color-text);
   margin: 0;
 }
 
@@ -327,30 +327,30 @@ export default {
   left: 0.75rem;
   width: 18px;
   height: 18px;
-  color: #94a3b8;
+  color: var(--color-text-faint);
   pointer-events: none;
 }
 
 .search-input {
   width: 100%;
   padding: 0.5rem 2.5rem 0.5rem 2.5rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   font-size: 0.875rem;
-  color: #0f172a;
-  background: #f8fafc;
+  color: var(--color-text);
+  background: var(--color-surface-subtle);
   transition: all 0.2s;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  background: white;
+  border-color: var(--color-accent);
+  background: var(--color-surface);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .search-input::placeholder {
-  color: #94a3b8;
+  color: var(--color-text-faint);
 }
 
 .clear-search {
@@ -363,14 +363,14 @@ export default {
   background: transparent;
   border: none;
   border-radius: 4px;
-  color: #94a3b8;
+  color: var(--color-text-faint);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .clear-search:hover {
-  background: #e2e8f0;
-  color: #64748b;
+  background: var(--color-border);
+  color: var(--color-text-muted);
 }
 
 .clear-search svg {
@@ -390,26 +390,26 @@ export default {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.875rem;
-  background: white;
-  border: 1px solid #cbd5e1;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #0f172a;
+  color: var(--color-text);
   white-space: nowrap;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .export-btn:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #94a3b8;
-  color: #2563eb;
+  background: var(--color-surface-subtle);
+  border-color: var(--color-border-strong);
+  color: var(--color-accent-text);
 }
 
 .export-btn:focus-visible {
   outline: none;
-  border-color: #2563eb;
+  border-color: var(--color-accent);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
 }
 
@@ -437,11 +437,11 @@ export default {
 .error {
   padding: 2rem;
   text-align: center;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .error {
-  color: #ef4444;
+  color: var(--color-negative);
 }
 
 .refreshing {
@@ -460,7 +460,7 @@ export default {
 }
 
 .row-link:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
@@ -470,6 +470,6 @@ export default {
 }
 
 .clickable-row:hover {
-  background: #eff6ff !important;
+  background: var(--color-accent-soft) !important;
 }
 </style>

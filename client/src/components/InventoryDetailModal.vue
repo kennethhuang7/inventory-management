@@ -61,7 +61,7 @@
               <div class="info-item">
                 <div class="info-label">{{ t('modals.inventory.unitsRemaining') }}</div>
                 <div class="info-value">
-                  <span :style="{ color: inventoryItem.quantity_on_hand <= inventoryItem.reorder_point ? '#ef4444' : '#10b981' }">
+                  <span :style="{ color: inventoryItem.quantity_on_hand <= inventoryItem.reorder_point ? 'var(--color-negative)' : 'var(--color-positive)' }">
                     {{ t('modals.units', { count: inventoryItem.quantity_on_hand - inventoryItem.reorder_point }) }}
                   </span>
                 </div>
@@ -198,7 +198,7 @@ const getSummaryCardClass = () => {
 }
 
 .modal-container {
-  background: white;
+  background: var(--color-surface);
   border-radius: 12px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
   max-width: 700px;
@@ -214,20 +214,20 @@ const getSummaryCardClass = () => {
   align-items: center;
   justify-content: space-between;
   padding: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .modal-title {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
   letter-spacing: -0.025em;
 }
 
 .close-button {
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--color-text-muted);
   cursor: pointer;
   padding: 0.5rem;
   display: flex;
@@ -238,8 +238,8 @@ const getSummaryCardClass = () => {
 }
 
 .close-button:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
 }
 
 .modal-body {
@@ -253,7 +253,7 @@ const getSummaryCardClass = () => {
   align-items: center;
   gap: 1.25rem;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
   margin-bottom: 1.5rem;
 }
 
@@ -288,13 +288,13 @@ const getSummaryCardClass = () => {
 .item-name {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
   margin: 0 0 0.5rem 0;
 }
 
 .item-sku {
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-family: 'Monaco', 'Courier New', monospace;
 }
 
@@ -309,18 +309,18 @@ const getSummaryCardClass = () => {
 }
 
 .stock-badge.success {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
 }
 
 .stock-badge.warning {
-  background: #fed7aa;
-  color: #92400e;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .stock-badge.danger {
-  background: #fecaca;
-  color: #991b1b;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .stock-summary {
@@ -338,22 +338,22 @@ const getSummaryCardClass = () => {
 
 .summary-card.primary {
   border-color: #bfdbfe;
-  background: #eff6ff;
+  background: var(--color-accent-soft);
 }
 
 .summary-card.success-card {
   border-color: #a7f3d0;
-  background: #d1fae5;
+  background: var(--color-success-bg);
 }
 
 .summary-card.warning-card {
-  border-color: #fed7aa;
-  background: #fffbeb;
+  border-color: var(--color-warning-bg);
+  background: var(--color-warning-soft);
 }
 
 .summary-card.danger-card {
-  border-color: #fecaca;
-  background: #fef2f2;
+  border-color: var(--color-danger-bg);
+  background: var(--color-danger-soft);
 }
 
 .summary-label {
@@ -361,19 +361,19 @@ const getSummaryCardClass = () => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--color-text-muted);
   margin-bottom: 0.5rem;
 }
 
 .summary-value {
   font-size: 1.875rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
 }
 
 .summary-subtitle {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--color-text-muted);
   margin-top: 0.25rem;
 }
 
@@ -394,24 +394,24 @@ const getSummaryCardClass = () => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .info-value {
   font-size: 0.938rem;
-  color: #0f172a;
+  color: var(--color-text);
   font-weight: 500;
 }
 
 .info-value.total-value {
   font-size: 1.125rem;
-  color: #2563eb;
+  color: var(--color-accent-text);
   font-weight: 700;
 }
 
 .modal-footer {
   padding: 1.5rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--color-border);
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
@@ -419,20 +419,20 @@ const getSummaryCardClass = () => {
 
 .btn-secondary {
   padding: 0.625rem 1.25rem;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   font-weight: 500;
   font-size: 0.875rem;
-  color: #334155;
+  color: var(--color-text-secondary);
   cursor: pointer;
   transition: all 0.15s ease;
   font-family: inherit;
 }
 
 .btn-secondary:hover {
-  background: #e2e8f0;
-  border-color: #cbd5e1;
+  background: var(--color-border);
+  border-color: var(--color-border-strong);
 }
 
 /* Modal transition animations */
@@ -459,7 +459,7 @@ const getSummaryCardClass = () => {
 /* Visible keyboard focus for the close button and footer button */
 .close-button:focus-visible,
 .btn-secondary:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 </style>

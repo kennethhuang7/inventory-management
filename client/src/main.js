@@ -1,5 +1,7 @@
 import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
+import './styles/theme.css'
+import './composables/useTheme'
 import App from './App.vue'
 import Dashboard from './views/Dashboard.vue'
 // Dashboard is the landing page so it stays in the main bundle; the other views load on demand

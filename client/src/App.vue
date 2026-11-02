@@ -60,6 +60,7 @@
           <span class="nav-label">{{ t('nav.tasks') }}</span>
           <span v-if="pendingTaskCount > 0" class="footer-task-count">{{ pendingTaskCount }}</span>
         </button>
+        <ThemeToggle />
         <LanguageSwitcher />
         <ProfileMenu
           @show-profile-details="showProfileDetails = true"
@@ -125,6 +126,7 @@ import ProfileMenu from './components/ProfileMenu.vue'
 import ProfileDetailsModal from './components/ProfileDetailsModal.vue'
 import TasksModal from './components/TasksModal.vue'
 import LanguageSwitcher from './components/LanguageSwitcher.vue'
+import ThemeToggle from './components/ThemeToggle.vue'
 
 export default {
   name: 'App',
@@ -133,7 +135,8 @@ export default {
     ProfileMenu,
     ProfileDetailsModal,
     TasksModal,
-    LanguageSwitcher
+    LanguageSwitcher,
+    ThemeToggle
   },
   setup() {
     const { currentUser } = useAuth()
@@ -316,14 +319,14 @@ export default {
 
 /* Baseline keyboard focus indicator; components with their own focus style override this */
 :focus-visible {
-  outline: 2px solid var(--color-accent, #2563eb);
+  outline: 2px solid var(--color-accent-text);
   outline-offset: 2px;
 }
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background: var(--color-bg);
-  color: #1e293b;
+  color: var(--color-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -419,7 +422,7 @@ body {
 }
 
 .icon-button:hover {
-  background: #f1f5f9;
+  background: var(--color-surface-muted);
   color: var(--color-text);
 }
 
@@ -454,13 +457,13 @@ body {
 }
 
 .nav-link:hover {
-  background: #f1f5f9;
+  background: var(--color-surface-muted);
   color: var(--color-text);
 }
 
 .nav-link.active {
   background: var(--color-accent-soft);
-  color: var(--color-accent);
+  color: var(--color-accent-text);
 }
 
 /* 3px accent bar on the active item (replaces the old top-nav underline) */
@@ -491,7 +494,7 @@ body {
 .nav-link:focus-visible,
 .sidebar .profile-button:focus-visible,
 .sidebar .language-button:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-accent-text);
   outline-offset: 2px;
 }
 
@@ -687,7 +690,7 @@ body {
 }
 
 .stat-card:hover {
-  border-color: #cbd5e1;
+  border-color: var(--color-border-strong);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
@@ -712,15 +715,15 @@ body {
 }
 
 .stat-card.success .stat-value {
-  color: #059669;
+  color: var(--color-positive);
 }
 
 .stat-card.danger .stat-value {
-  color: #dc2626;
+  color: var(--color-negative);
 }
 
 .stat-card.info .stat-value {
-  color: #2563eb;
+  color: var(--color-accent-text);
 }
 
 .card {
@@ -767,7 +770,7 @@ th {
   text-align: left;
   padding: var(--space-2) var(--space-3);
   font-weight: 600;
-  color: #475569;
+  color: var(--color-text-secondary);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -775,8 +778,8 @@ th {
 
 td {
   padding: var(--space-2) var(--space-3);
-  border-top: 1px solid #f1f5f9;
-  color: #334155;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
   font-size: 0.875rem;
 }
 
@@ -799,53 +802,53 @@ tbody tr:hover {
 }
 
 .badge.success {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
 }
 
 .badge.warning {
-  background: #fed7aa;
-  color: #92400e;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .badge.danger {
-  background: #fecaca;
-  color: #991b1b;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .badge.info {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
 }
 
 .badge.increasing {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
 }
 
 .badge.decreasing {
-  background: #fecaca;
-  color: #991b1b;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .badge.stable {
-  background: #e0e7ff;
-  color: #3730a3;
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
 }
 
 .badge.high {
-  background: #fecaca;
-  color: #991b1b;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .badge.medium {
-  background: #fed7aa;
-  color: #92400e;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .badge.low {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
 }
 
 .loading {
@@ -856,9 +859,9 @@ tbody tr:hover {
 }
 
 .error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
+  background: var(--color-danger-soft);
+  border: 1px solid var(--color-danger-bg);
+  color: var(--color-danger-text);
   padding: 1rem;
   border-radius: 8px;
   margin: 1rem 0;

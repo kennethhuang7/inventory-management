@@ -426,6 +426,14 @@ export default {
     }
   },
 
+  // Theme
+  theme: {
+    darkMode: 'ダークモード',
+    lightMode: 'ライトモード',
+    switchToDark: 'ダークモードに切り替える',
+    switchToLight: 'ライトモードに切り替える'
+  },
+
   // Language
   language: {
     english: 'English',

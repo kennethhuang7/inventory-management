@@ -342,7 +342,7 @@ const submit = async () => {
 }
 
 .modal-container {
-  background: white;
+  background: var(--color-surface);
   border-radius: 12px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
   max-width: 600px;
@@ -362,20 +362,20 @@ const submit = async () => {
   align-items: center;
   justify-content: space-between;
   padding: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .modal-title {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
   letter-spacing: -0.025em;
 }
 
 .close-button {
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--color-text-muted);
   cursor: pointer;
   padding: 0.5rem;
   display: flex;
@@ -386,14 +386,14 @@ const submit = async () => {
 }
 
 .close-button:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
 }
 
 .close-button:focus-visible,
 .btn-secondary:focus-visible,
 .btn-primary:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
@@ -403,14 +403,14 @@ const submit = async () => {
   align-items: baseline;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--color-surface-subtle);
+  border-bottom: 1px solid var(--color-border);
   font-size: 0.875rem;
-  color: #0f172a;
+  color: var(--color-text);
 }
 
 .item-banner-label {
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 0.813rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -418,7 +418,7 @@ const submit = async () => {
 }
 
 .item-sku {
-  color: #64748b;
+  color: var(--color-text-muted);
   font-family: 'Monaco', 'Courier New', monospace;
   font-size: 0.813rem;
 }
@@ -452,25 +452,25 @@ const submit = async () => {
 .field label {
   font-size: 0.813rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--color-text-secondary);
 }
 
 .field input,
 .field textarea {
   padding: 0.625rem 0.75rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   font-size: 0.875rem;
   font-family: inherit;
-  color: #0f172a;
-  background: white;
+  color: var(--color-text);
+  background: var(--color-surface);
 }
 
 .field input:focus-visible,
 .field textarea:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--color-accent);
   outline-offset: 1px;
-  border-color: #2563eb;
+  border-color: var(--color-accent);
 }
 
 .field input[aria-invalid='true'],
@@ -481,21 +481,21 @@ const submit = async () => {
 .field-hint {
   margin: 0;
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .field-error {
   margin: 0;
   font-size: 0.75rem;
-  color: #b91c1c;
+  color: var(--color-negative);
 }
 
 .form-error {
   padding: 0.75rem 1rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--color-danger-soft);
+  border: 1px solid var(--color-danger-bg);
   border-radius: 8px;
-  color: #991b1b;
+  color: var(--color-danger-text);
   font-size: 0.875rem;
 }
 
@@ -506,7 +506,7 @@ const submit = async () => {
 .state-text {
   padding: 2rem;
   text-align: center;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .info-grid {
@@ -531,25 +531,25 @@ const submit = async () => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .info-value {
   margin: 0;
   font-size: 0.938rem;
-  color: #0f172a;
+  color: var(--color-text);
   font-weight: 500;
   overflow-wrap: anywhere;
 }
 
 .info-value.mono {
   font-family: 'Monaco', 'Courier New', monospace;
-  color: #2563eb;
+  color: var(--color-accent-text);
 }
 
 .modal-footer {
   padding: 1.5rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--color-border);
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
@@ -557,26 +557,26 @@ const submit = async () => {
 
 .btn-secondary {
   padding: 0.625rem 1.25rem;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   font-weight: 500;
   font-size: 0.875rem;
-  color: #334155;
+  color: var(--color-text-secondary);
   cursor: pointer;
   transition: all 0.15s ease;
   font-family: inherit;
 }
 
 .btn-secondary:hover {
-  background: #e2e8f0;
-  border-color: #cbd5e1;
+  background: var(--color-border);
+  border-color: var(--color-border-strong);
 }
 
 .btn-primary {
   padding: 0.625rem 1.25rem;
-  background: #2563eb;
-  border: 1px solid #2563eb;
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
   border-radius: 8px;
   font-weight: 600;
   font-size: 0.875rem;

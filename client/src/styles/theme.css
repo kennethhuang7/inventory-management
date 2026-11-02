@@ -1,0 +1,96 @@
+/*
+ * Theme tokens. Light values are the app's existing palette, so light mode looks unchanged;
+ * dark values live under [data-theme="dark"], which useTheme.js sets on <html>.
+ *
+ * Components should use these tokens instead of hex colors. Rules of thumb:
+ *   - backgrounds/borders/text use the neutral tokens
+ *   - the blue accent as a BACKGROUND (buttons) is --color-accent in both themes,
+ *     but accent used as TEXT or a link must use --color-accent-text (lighter in dark)
+ *   - status badges use the paired -bg / -text tokens, never a light tint with dark text
+ *     hardcoded, which would glow on a dark surface
+ */
+:root {
+  color-scheme: light;
+
+  /* Neutrals (these also back the tokens App.vue already defines) */
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f8fafc; /* table headers, hover rows, card footers */
+  --color-surface-muted: #f1f5f9; /* tracks, disabled fills, chips */
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1; /* inputs and buttons */
+  --color-text: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748b;
+  --color-text-faint: #94a3b8; /* placeholders, decorative icons */
+
+  /* Accent */
+  --color-accent: #2563eb;
+  --color-accent-text: #2563eb;
+  --color-accent-soft: #eff6ff;
+
+  /* Status pairs (badge background + text) */
+  --color-success-bg: #d1fae5;
+  --color-success-text: #065f46;
+  --color-danger-bg: #fecaca;
+  --color-danger-text: #991b1b;
+  --color-danger-soft: #fef2f2; /* error panels */
+  --color-warning-bg: #fed7aa;
+  --color-warning-text: #92400e;
+  --color-info-bg: #dbeafe;
+  --color-info-text: #1e40af;
+
+  /* Faint tinted card backgrounds (cost categories, warning cards) */
+  --color-warning-soft: #fffbeb;
+  --color-success-soft: #f0fdf4;
+  --color-violet-soft: #f5f3ff;
+
+  /* Standalone status text (deltas, "Overdue", logout) on a surface, not inside a badge */
+  --color-positive: #059669;
+  --color-negative: #dc2626;
+  --color-caution: #b45309;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark; /* native scrollbars, date pickers and form controls follow the theme */
+
+  --color-bg: #0b1120;
+  --color-surface: #111827;
+  --color-surface-subtle: #0f172a;
+  --color-surface-muted: #1e293b;
+  --color-border: #263244;
+  --color-border-strong: #334155;
+  --color-text: #e2e8f0;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-text-faint: #7c8ba1; /* >= 4.5:1 on dark surfaces; used by chart axis labels */
+
+  --color-accent: #2563eb; /* unchanged: white text on it is 5.2:1 in both themes */
+  --color-accent-text: #93c5fd;
+  --color-accent-soft: #172554;
+
+  --color-success-bg: #064e3b;
+  --color-success-text: #a7f3d0;
+  --color-danger-bg: #7f1d1d;
+  --color-danger-text: #fecaca;
+  --color-danger-soft: #2a1215;
+  --color-warning-bg: #78350f;
+  --color-warning-text: #fed7aa;
+  --color-info-bg: #1e3a8a;
+  --color-info-text: #bfdbfe;
+
+  --color-warning-soft: #2a1f0a;
+  --color-success-soft: #0d2a1f;
+  --color-violet-soft: #1d1a3a;
+
+  --color-positive: #34d399;
+  --color-negative: #f87171;
+  --color-caution: #fbbf24;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
