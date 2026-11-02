@@ -105,8 +105,15 @@ export const api = {
   }
 }
 
+/**
+ * Normalize an axios error into { status, message, isNotFound }.
+ * Prefers FastAPI's `detail` over axios's generic "Request failed with status code N".
+ */
 export function formatApiError(error) {
   const status = error?.response?.status
-  const message = error?.message || 'Unknown error'
+  // FastAPI sends `detail` as a string for HTTPException but as an array of
+  // objects for 422 validation errors, so only use it when it is a string.
+  const detail = error?.response?.data?.detail
+  const message = (typeof detail === 'string' && detail) || error?.message || 'Unknown error'
   return { status, message, isNotFound: status === 404 }
 }

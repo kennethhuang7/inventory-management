@@ -53,3 +53,6 @@ logs/
 
 # Environment variables
 .env
+
+# Claude Code local settings (personal; may contain local paths or tokens)
+.claude/settings.local.json
