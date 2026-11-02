@@ -13,7 +13,7 @@ Analyze a Vue 3 codebase and report concrete, ranked suggestions for performance
 
 Measure before judging. Collect, and report briefly:
 
-- Component files and line counts (largest first): `wc -l src/**/*.vue | sort -rn | head -20`
+- Component files and line counts (largest first): `find src -name '*.vue' -exec wc -l {} + | sort -rn | head -20` (`find` recurses in any shell; a `src/**/*.vue` glob does not in bash and would skip `src/App.vue`)
 - Script style per file: `<script setup>`, `setup()` in `export default`, or Options API (`data()`/`methods`). Note mixed styles.
 - Shared logic locations: `composables/`, `utils/`, any API client module.
 - Where state lives: module-level singleton refs vs per-component refs.
@@ -107,20 +107,21 @@ Typical candidates: number, currency, date, and percentage formatters; status-to
 Use these to back each finding with evidence, not impressions.
 
 ```bash
-# Largest components
-wc -l src/views/*.vue src/components/*.vue | sort -rn | head -15
+# Largest components (find, not a glob: bash does not recurse with **)
+find src -name '*.vue' -exec wc -l {} + | sort -rn | head -15
 
 # Debug logging
 grep -rn "console\.log" src --include='*.vue'
 
-# Index used as v-for key
+# Index used as v-for key (single-line tags only; check multi-line tags by eye)
 grep -rnE 'v-for=.*\(.*, *(index|i|idx)\).*:key="(index|i|idx)"' src --include='*.vue'
 
 # v-if and v-for on the same element (single-line tags only; check multi-line tags by eye)
 grep -rnE '<[a-z-]+[^>]*v-for=[^>]*v-if=|<[a-z-]+[^>]*v-if=[^>]*v-for=' src --include='*.vue'
 
-# Mixed API styles
-grep -rlE "export default" src --include='*.vue'; grep -rl "<script setup" src --include='*.vue'
+# Mixed API styles: `export default` matches both Options API and setup(), so look for Options-only markers
+echo '-- script setup:'; grep -rl "<script setup" src --include='*.vue'
+echo '-- Options API (data/methods/computed blocks):'; grep -rlE "^[[:space:]]*(data|methods)[[:space:]]*(\(\)|:)" src --include='*.vue'
 
 # Deep watchers and timers without cleanup
 grep -rnE "deep: *true" src --include='*.vue'
