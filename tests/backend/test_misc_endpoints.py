@@ -241,3 +241,30 @@ class TestRootEndpoint:
         assert "version" in data
         assert isinstance(data["message"], str)
         assert isinstance(data["version"], str)
+
+
+class TestReportFilters:
+    """Test suite for the warehouse/category/status filters on report endpoints."""
+
+    def test_quarterly_totals_match_filtered_orders(self, client):
+        """Test that filtered quarterly report order counts add up to the filtered orders."""
+        orders = client.get("/api/orders?warehouse=Tokyo").json()
+        report = client.get("/api/reports/quarterly?warehouse=Tokyo").json()
+        assert sum(q["total_orders"] for q in report) == len(orders)
+
+    def test_monthly_trends_match_filtered_orders(self, client):
+        """Test that filtered monthly trend revenue adds up to the filtered orders."""
+        orders = client.get("/api/orders?category=Sensors&status=Delivered").json()
+        report = client.get("/api/reports/monthly-trends?category=Sensors&status=Delivered").json()
+        assert sum(m["order_count"] for m in report) == len(orders)
+        assert abs(sum(m["revenue"] for m in report) - sum(o["total_value"] for o in orders)) < 0.01
+
+    def test_filters_narrow_the_report(self, client):
+        """Test that a filter reduces the report compared with no filter."""
+        everything = client.get("/api/reports/quarterly").json()
+        tokyo = client.get("/api/reports/quarterly?warehouse=Tokyo").json()
+        assert sum(q["total_orders"] for q in tokyo) < sum(q["total_orders"] for q in everything)
+
+    def test_all_value_means_no_filter(self, client):
+        """Test that 'all' is treated as no filter."""
+        assert client.get("/api/reports/quarterly?warehouse=all").json() == client.get("/api/reports/quarterly").json()

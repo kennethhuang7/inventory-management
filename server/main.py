@@ -1,7 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Optional
-from pydantic import BaseModel
+from fastapi.middleware.gzip import GZipMiddleware
+from datetime import date
+from typing import List, Literal, Optional
+from pydantic import BaseModel, Field
 from mock_data import inventory_items, orders, demand_forecasts, backlog_items, spending_summary, monthly_spending, category_spending, recent_transactions, purchase_orders
 
 app = FastAPI(title="Factory Inventory Management System")
@@ -46,13 +48,17 @@ def apply_filters(items: list, warehouse: Optional[str] = None, category: Option
 
     return filtered
 
-# CORS middleware
+# Compress large JSON responses (/api/orders is ~110 KB uncompressed, ~13 KB gzipped)
+app.add_middleware(GZipMiddleware, minimum_size=1024)
+
+# CORS: only the local frontend may call the API from a browser. The app uses no cookies,
+# so credentials stay off (a wildcard origin with credentials is also rejected by browsers).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Content-Type"],
 )
 
 # Data models
@@ -100,6 +106,7 @@ class BacklogItem(BaseModel):
     days_delayed: int
     priority: str
     has_purchase_order: Optional[bool] = False
+    purchase_order_id: Optional[str] = None
 
 class PurchaseOrder(BaseModel):
     id: str
@@ -113,12 +120,25 @@ class PurchaseOrder(BaseModel):
     notes: Optional[str] = None
 
 class CreatePurchaseOrderRequest(BaseModel):
-    backlog_item_id: str
-    supplier_name: str
-    quantity: int
-    unit_cost: float
-    expected_delivery_date: str
-    notes: Optional[str] = None
+    # Bounds matter even for mock data: negative quantities or NaN costs would otherwise be accepted
+    backlog_item_id: str = Field(min_length=1, max_length=50)
+    supplier_name: str = Field(min_length=1, max_length=120)
+    quantity: int = Field(gt=0, le=1_000_000)
+    unit_cost: float = Field(gt=0, le=10_000_000, allow_inf_nan=False)
+    expected_delivery_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    notes: Optional[str] = Field(default=None, max_length=500)
+
+class Task(BaseModel):
+    id: int
+    title: str
+    priority: Literal["high", "medium", "low"]
+    dueDate: str
+    status: Literal["pending", "completed"]
+
+class CreateTaskRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    priority: Literal["high", "medium", "low"] = "medium"
+    dueDate: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
 
 # API endpoints
 @app.get("/")
@@ -170,14 +190,95 @@ def get_demand_forecasts():
 def get_backlog():
     """Get backlog items with purchase order status"""
     # Add has_purchase_order flag to each backlog item
+    po_by_backlog_item = {po["backlog_item_id"]: po["id"] for po in purchase_orders}
     result = []
     for item in backlog_items:
         item_dict = dict(item)
-        # Check if this backlog item has a purchase order
-        has_po = any(po["backlog_item_id"] == item["id"] for po in purchase_orders)
-        item_dict["has_purchase_order"] = has_po
+        # The frontend uses purchase_order_id to decide between "Create PO" and "View PO"
+        item_dict["purchase_order_id"] = po_by_backlog_item.get(item["id"])
+        item_dict["has_purchase_order"] = item["id"] in po_by_backlog_item
         result.append(item_dict)
     return result
+
+# Purchase orders (in memory: the list is shared with mock_data, so a restart resets it)
+@app.post("/api/purchase-orders", response_model=PurchaseOrder, status_code=201)
+def create_purchase_order(request: CreatePurchaseOrderRequest):
+    """Create a purchase order for a backlog item"""
+    if not any(item["id"] == request.backlog_item_id for item in backlog_items):
+        raise HTTPException(status_code=404, detail=f"Backlog item {request.backlog_item_id} not found")
+    if any(po["backlog_item_id"] == request.backlog_item_id for po in purchase_orders):
+        raise HTTPException(status_code=409, detail="A purchase order already exists for this backlog item")
+    try:
+        date.fromisoformat(request.expected_delivery_date)
+    except ValueError:
+        # The regex only checks the shape; this rejects impossible dates such as 2025-13-45
+        raise HTTPException(status_code=422, detail="expected_delivery_date is not a valid date")
+
+    # Next number is max+1, not len+1, so ids stay unique if entries are ever removed
+    next_number = max((int(po["id"].split("-")[-1]) for po in purchase_orders), default=0) + 1
+    purchase_order = {
+        "id": f"PO-{next_number:04d}",
+        "backlog_item_id": request.backlog_item_id,
+        "supplier_name": request.supplier_name,
+        "quantity": request.quantity,
+        "unit_cost": request.unit_cost,
+        "expected_delivery_date": request.expected_delivery_date,
+        "status": "Pending",
+        "created_date": date.today().isoformat(),
+        "notes": request.notes,
+    }
+    purchase_orders.append(purchase_order)
+    return purchase_order
+
+@app.get("/api/purchase-orders/{backlog_item_id}", response_model=PurchaseOrder)
+def get_purchase_order_for_backlog_item(backlog_item_id: str):
+    """Get the purchase order for a backlog item"""
+    for po in purchase_orders:
+        if po["backlog_item_id"] == backlog_item_id:
+            return po
+    raise HTTPException(status_code=404, detail=f"Purchase order for backlog item {backlog_item_id} not found")
+
+# Tasks (in memory; ids start at 1000 so they never collide with the client-side mock tasks, ids 1-9)
+tasks_db: List[dict] = []
+_next_task_id = 1000
+
+@app.get("/api/tasks", response_model=List[Task])
+def get_tasks():
+    """Get all tasks"""
+    return tasks_db
+
+@app.post("/api/tasks", response_model=Task, status_code=201)
+def create_task(request: CreateTaskRequest):
+    """Create a task"""
+    global _next_task_id
+    task = {
+        "id": _next_task_id,
+        "title": request.title.strip(),
+        "priority": request.priority,
+        "dueDate": request.dueDate,
+        "status": "pending",
+    }
+    _next_task_id += 1
+    tasks_db.insert(0, task)
+    return task
+
+@app.patch("/api/tasks/{task_id}", response_model=Task)
+def toggle_task(task_id: int):
+    """Toggle a task between pending and completed"""
+    for task in tasks_db:
+        if task["id"] == task_id:
+            task["status"] = "completed" if task["status"] == "pending" else "pending"
+            return task
+    raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+@app.delete("/api/tasks/{task_id}")
+def delete_task(task_id: int):
+    """Delete a task"""
+    for index, task in enumerate(tasks_db):
+        if task["id"] == task_id:
+            tasks_db.pop(index)
+            return {"deleted": task_id}
+    raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
 
 @app.get("/api/dashboard/summary")
 def get_dashboard_summary(
@@ -228,12 +329,16 @@ def get_recent_transactions():
     return recent_transactions
 
 @app.get("/api/reports/quarterly")
-def get_quarterly_reports():
-    """Get quarterly performance reports"""
+def get_quarterly_reports(
+    warehouse: Optional[str] = None,
+    category: Optional[str] = None,
+    status: Optional[str] = None
+):
+    """Get quarterly performance reports (month is not accepted: this report is itself a per-period breakdown)"""
     # Calculate quarterly statistics from orders
     quarters = {}
 
-    for order in orders:
+    for order in apply_filters(orders, warehouse, category, status):
         order_date = order.get('order_date', '')
         # Determine quarter
         if '2025-01' in order_date or '2025-02' in order_date or '2025-03' in order_date:
@@ -274,11 +379,15 @@ def get_quarterly_reports():
     return result
 
 @app.get("/api/reports/monthly-trends")
-def get_monthly_trends():
-    """Get month-over-month trends"""
+def get_monthly_trends(
+    warehouse: Optional[str] = None,
+    category: Optional[str] = None,
+    status: Optional[str] = None
+):
+    """Get month-over-month trends (month is not accepted: this report is itself a per-period breakdown)"""
     months = {}
 
-    for order in orders:
+    for order in apply_filters(orders, warehouse, category, status):
         order_date = order.get('order_date', '')
         if not order_date:
             continue
@@ -306,4 +415,5 @@ def get_monthly_trends():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    # Bind to loopback only: the API has no authentication, so it must not be reachable from the LAN
+    uvicorn.run(app, host="127.0.0.1", port=8001)

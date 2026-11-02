@@ -5,8 +5,10 @@
     </div>
 
     <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
-    <div v-else>
+    <!-- After the first load the content stays mounted; filter changes only dim it -->
+    <div v-else :class="{ refreshing }" :aria-busy="refreshing">
+      <ErrorState v-if="error" :message="errorMessage" :stale="hasLoaded" @retry="loadData" />
+      <template v-if="hasLoaded">
       <!-- Key Performance Indicators -->
       <div class="kpi-section">
         <h3 class="section-title">{{ t('dashboard.kpi.title') }}</h3>
@@ -48,8 +50,8 @@
             <div class="kpi-header">
               <span class="kpi-label">{{ t(selectedPeriod === 'all' ? 'dashboard.kpi.revenueYTD' : 'dashboard.kpi.revenueMTD') }}</span>
             </div>
-            <div class="kpi-value">{{ formatCurrency(Math.round(summary.total_orders_value), selectedCurrency) }}</div>
-            <div class="kpi-goal">{{ t('dashboard.kpi.goal') }}: {{ formatCurrency(revenueGoal, selectedCurrency) }} ({{ summary.total_orders_value > revenueGoal ? '+' : '' }}{{ ((summary.total_orders_value / revenueGoal - 1) * 100).toFixed(1) }}%)</div>
+            <div class="kpi-value">{{ formatMoney(Math.round(summary.total_orders_value), selectedCurrency) }}</div>
+            <div class="kpi-goal">{{ t('dashboard.kpi.goal') }}: {{ formatMoney(revenueGoal, selectedCurrency) }} ({{ summary.total_orders_value > revenueGoal ? '+' : '' }}{{ ((summary.total_orders_value / revenueGoal - 1) * 100).toFixed(1) }}%)</div>
             <div class="kpi-progress-bar">
               <div class="kpi-progress" :style="{ width: Math.min((summary.total_orders_value / revenueGoal * 100), 100) + '%' }"></div>
             </div>
@@ -85,7 +87,7 @@
               <!-- Left: Donut Chart -->
               <div class="order-health-chart">
                 <svg viewBox="0 0 200 200" class="donut-svg-compact">
-                  <circle cx="100" cy="100" r="65" fill="none" stroke="#e2e8f0" stroke-width="25"/>
+                  <circle cx="100" cy="100" r="65" fill="none" stroke="var(--color-border)" stroke-width="25"/>
                   <circle cx="100" cy="100" r="65" fill="none" stroke="#10b981" stroke-width="25"
                     :stroke-dasharray="`${getCircleSegment(statusData.delivered)} 408`"
                     stroke-dashoffset="0" transform="rotate(-90 100 100)"/>
@@ -116,11 +118,11 @@
               <div class="order-health-metrics">
                 <div class="health-metric">
                   <div class="health-metric-label">{{ t('dashboard.orderHealth.revenue') }}</div>
-                  <div class="health-metric-value">{{ formatCurrency(orderHealthMetrics.totalValue, selectedCurrency) }}</div>
+                  <div class="health-metric-value">{{ formatMoney(orderHealthMetrics.totalValue, selectedCurrency) }}</div>
                 </div>
                 <div class="health-metric">
                   <div class="health-metric-label">{{ t('dashboard.orderHealth.avgOrderValue') }}</div>
-                  <div class="health-metric-value">{{ formatCurrency(orderHealthMetrics.avgOrderValue, selectedCurrency) }}</div>
+                  <div class="health-metric-value">{{ formatMoney(orderHealthMetrics.avgOrderValue, selectedCurrency) }}</div>
                 </div>
                 <div class="health-metric">
                   <div class="health-metric-label">{{ t('dashboard.orderHealth.onTimeRate') }}</div>
@@ -148,7 +150,7 @@
                 <div class="h-bar-label">{{ translateCategory(cat.name) }}</div>
                 <div class="h-bar-container">
                   <div class="h-bar" :style="{ width: (cat.value / maxCategoryValue * 100) + '%', background: cat.color }">
-                    <span class="h-bar-value">{{ selectedCurrency === 'JPY' ? formatCurrency(cat.value, selectedCurrency) : `$${(cat.value / 1000).toFixed(1)}K` }}</span>
+                    <span class="h-bar-value">{{ formatMoney(cat.value, selectedCurrency, { compact: true }) }}</span>
                   </div>
                 </div>
               </div>
@@ -180,7 +182,7 @@
                   <th>{{ t('dashboard.inventoryShortages.shortage') }}</th>
                   <th>{{ t('dashboard.inventoryShortages.daysDelayed') }}</th>
                   <th>{{ t('dashboard.inventoryShortages.priority') }}</th>
-                  <th>Actions</th>
+                  <th>{{ t('common.actions') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -188,7 +190,7 @@
                   v-for="item in backlogItems"
                   :key="item.id"
                 >
-                  <td @click="showBacklogDetail(item)" style="cursor: pointer;"><strong>{{ item.order_id }}</strong></td>
+                  <td @click="showBacklogDetail(item)" style="cursor: pointer;"><button type="button" class="row-link" @click.stop="showBacklogDetail(item)">{{ item.order_id }}</button></td>
                   <td @click="showBacklogDetail(item)" style="cursor: pointer;"><strong>{{ item.item_sku }}</strong></td>
                   <td @click="showBacklogDetail(item)" style="cursor: pointer;">{{ translateProductName(item.item_name) }}</td>
                   <td @click="showBacklogDetail(item)" style="cursor: pointer;">{{ item.quantity_needed }}</td>
@@ -199,7 +201,7 @@
                     </span>
                   </td>
                   <td @click="showBacklogDetail(item)" style="cursor: pointer;">
-                    <span :style="{ color: item.days_delayed > 7 ? '#ef4444' : '#f59e0b', fontWeight: 600 }">
+                    <span :style="{ color: item.days_delayed > 7 ? 'var(--color-negative)' : 'var(--color-caution)', fontWeight: 600 }">
                       {{ item.days_delayed }} {{ t('dashboard.inventoryShortages.days') }}
                     </span>
                   </td>
@@ -210,18 +212,20 @@
                   </td>
                   <td>
                     <button
-                      v-if="!item.purchase_order_id"
+                      v-if="!item.has_purchase_order"
+                      type="button"
                       @click.stop="openPOModal(item)"
                       class="po-button create"
                     >
-                      Create PO
+                      {{ t('dashboard.inventoryShortages.createPO') }}
                     </button>
                     <button
                       v-else
+                      type="button"
                       @click.stop="viewPO(item)"
                       class="po-button view"
                     >
-                      View PO
+                      {{ t('dashboard.inventoryShortages.viewPO') }}
                     </button>
                   </td>
                 </tr>
@@ -256,11 +260,11 @@
                   @click="showProductDetail(item)"
                 >
                   <td><strong>{{ translateProductName(item.name) }}</strong></td>
-                  <td>{{ item.sku }}</td>
+                  <td><button type="button" class="row-link" @click.stop="showProductDetail(item)">{{ item.sku }}</button></td>
                   <td>{{ translateCategory(item.category) }}</td>
                   <td>{{ item.unitsOrdered }}</td>
-                  <td><strong>{{ formatCurrency(item.revenue, selectedCurrency) }}</strong></td>
-                  <td>{{ formatDate(item.firstOrderDate) }}</td>
+                  <td><strong>{{ formatMoney(item.revenue, selectedCurrency) }}</strong></td>
+                  <td>{{ formatDate(item.firstOrderDate, currentLocale) || '-' }}</td>
                   <td>
                     <span :class="['badge', getStockBadge(item.stockLevel)]">
                       {{ translateStockLevel(item.stockLevel) }}
@@ -272,6 +276,7 @@
           </div>
         </div>
       </div>
+      </template>
     </div>
 
     <ProductDetailModal
@@ -301,20 +306,23 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { api } from '../api'
 import { useFilters } from '../composables/useFilters'
 import { useI18n } from '../composables/useI18n'
-import { formatCurrency } from '../utils/currency'
+import { useLoader } from '../composables/useLoader'
+import { formatMoney, formatDate as formatDateShared } from '../utils/format'
 import ProductDetailModal from '../components/ProductDetailModal.vue'
 import BacklogDetailModal from '../components/BacklogDetailModal.vue'
+import PurchaseOrderModal from '../components/PurchaseOrderModal.vue'
+import ErrorState from '../components/ErrorState.vue'
 
 export default {
   name: 'Dashboard',
   components: {
     ProductDetailModal,
     BacklogDetailModal,
+    PurchaseOrderModal,
+    ErrorState,
   },
   setup() {
-    const { t, currentCurrency, translateProductName, translateWarehouse } = useI18n()
-    const loading = ref(true)
-    const error = ref(null)
+    const { t, currentLocale, currentCurrency, translateProductName, translateWarehouse } = useI18n()
     const summary = ref({})
     const allOrders = ref([])
     const inventoryItems = ref([])
@@ -347,13 +355,6 @@ export default {
         return monthlyGoal * 12 // $9,600,000 for the full year
       }
       return monthlyGoal // $800,000 for a single month
-    })
-
-    const revenueGoalDisplay = computed(() => {
-      if (revenueGoal.value >= 1000000) {
-        return `$${(revenueGoal.value / 1000000).toFixed(1)}M`
-      }
-      return `$${(revenueGoal.value / 1000).toFixed(0)}K`
     })
 
     const statusData = computed(() => {
@@ -450,40 +451,13 @@ export default {
       return Math.max(...categoryData.value.map(c => c.value))
     })
 
-    const orderTrendData = computed(() => {
-      // Group orders by month from the actual data
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-      // Initialize all months with 0 orders
-      const monthMap = {}
-      monthNames.forEach(month => {
-        monthMap[month] = { month, orders: 0 }
+    // Index inventory by sku once instead of scanning the array for every order line
+    const inventoryBySku = computed(() => {
+      const map = new Map()
+      inventoryItems.value.forEach(i => {
+        if (!map.has(i.sku)) map.set(i.sku, i)
       })
-
-      // Count orders for each month
-      if (Array.isArray(allOrders.value)) {
-        allOrders.value.forEach(order => {
-          if (order && order.order_date) {
-            const date = new Date(order.order_date)
-            const monthIndex = date.getMonth()
-            // Check if monthIndex is valid (0-11)
-            if (!isNaN(monthIndex) && monthIndex >= 0 && monthIndex <= 11) {
-              const monthName = monthNames[monthIndex]
-              monthMap[monthName].orders++
-            }
-          }
-        })
-      }
-
-      // Return all months in order
-      return monthNames.map(month => monthMap[month])
-    })
-
-    const maxOrderCount = computed(() => {
-      if (orderTrendData.value.length === 0) return 10
-      const max = Math.max(...orderTrendData.value.map(d => d.orders))
-      // Round up to nearest 10 for cleaner axis, minimum 10
-      return Math.max(10, Math.ceil(max / 10) * 10)
+      return map
     })
 
     const topProducts = computed(() => {
@@ -498,7 +472,7 @@ export default {
 
             // Find matching inventory item to get full product details
             // Note: inventoryItems is also filtered by API based on: warehouse, category
-            const invItem = inventoryItems.value.find(i => i.sku === sku)
+            const invItem = inventoryBySku.value.get(sku)
 
             // Skip products that don't match current inventory filters
             // (e.g., if filtering by warehouse A, don't show products from warehouse B)
@@ -558,26 +532,32 @@ export default {
       return allBacklogItems.value.filter(b => validSkus.has(b.item_sku))
     })
 
-    const loadData = async () => {
+    // Summary/orders/inventory depend on the filters; the backlog does not (see loadBacklog)
+    const { loading, refreshing, hasLoaded, error, errorMessage, run: loadData } = useLoader(async (isCurrent) => {
+      const filters = getCurrentFilters()
+
+      const [summaryData, ordersResult, inventoryData] = await Promise.all([
+        api.getDashboardSummary(filters),
+        api.getOrders(filters),
+        api.getInventory(filters)
+      ])
+      if (!isCurrent()) return
+
+      summary.value = summaryData
+      allOrders.value = ordersResult
+      inventoryItems.value = inventoryData
+    })
+
+    // The backlog ignores every filter, so it is fetched on mount and after a PO is created,
+    // not on each filter change. A failure here must not blank the rest of the dashboard.
+    let backlogRequest = 0
+    const loadBacklog = async () => {
+      const mine = ++backlogRequest
       try {
-        loading.value = true
-        const filters = getCurrentFilters()
-
-        const [summaryData, ordersData, inventoryData, backlogData] = await Promise.all([
-          api.getDashboardSummary(filters),
-          api.getOrders(filters),
-          api.getInventory(filters),
-          api.getBacklog()
-        ])
-
-        summary.value = summaryData
-        allOrders.value = ordersData
-        inventoryItems.value = inventoryData
-        allBacklogItems.value = backlogData
+        const data = await api.getBacklog()
+        if (mine === backlogRequest) allBacklogItems.value = data
       } catch (err) {
-        error.value = 'Failed to load dashboard data: ' + err.message
-      } finally {
-        loading.value = false
+        console.error('Failed to load backlog', err)
       }
     }
 
@@ -632,14 +612,6 @@ export default {
       return priorityMap[priority] || priority
     }
 
-    const formatDate = (dateString) => {
-      if (!dateString) return '-'
-      const { currentLocale } = useI18n()
-      const locale = currentLocale.value === 'ja' ? 'ja-JP' : 'en-US'
-      const date = new Date(dateString)
-      return date.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })
-    }
-
     const showProductDetail = (product) => {
       selectedProduct.value = product
       showProductModal.value = true
@@ -663,13 +635,15 @@ export default {
     }
 
     const handlePOCreated = (poData) => {
-      // Update the backlog item with the new PO ID
-      const item = allBacklogItems.value.find(b => b.id === poData.backlog_item_id)
+      // The API returns backlog_item_id as a string while backlog ids may be numeric, so compare as strings
+      const item = allBacklogItems.value.find(b => String(b.id) === String(poData.backlog_item_id))
       if (item) {
+        item.has_purchase_order = true
         item.purchase_order_id = poData.id
-        item.purchase_order = poData
       }
       showPOModal.value = false
+      // Re-sync with the server's view of which items have a PO
+      loadBacklog()
     }
 
     // Watch for filter changes and reload data
@@ -677,12 +651,19 @@ export default {
       loadData()
     })
 
-    onMounted(loadData)
+    onMounted(() => {
+      loadData()
+      loadBacklog()
+    })
 
     return {
       t,
       loading,
+      refreshing,
+      hasLoaded,
       error,
+      errorMessage,
+      loadData,
       summary,
       ordersData,
       fillRate,
@@ -690,8 +671,6 @@ export default {
       orderHealthMetrics,
       categoryData,
       maxCategoryValue,
-      orderTrendData,
-      maxOrderCount,
       topProducts,
       backlogItems,
       calculatePercentage,
@@ -700,9 +679,9 @@ export default {
       translateCategory,
       translateStockLevel,
       translatePriority,
-      formatDate,
+      formatDate: formatDateShared,
+      currentLocale,
       revenueGoal,
-      revenueGoalDisplay,
       showProductModal,
       selectedProduct,
       showProductDetail,
@@ -711,7 +690,7 @@ export default {
       showBacklogDetail,
       selectedPeriod,
       selectedCurrency: currentCurrency,
-      formatCurrency,
+      formatMoney,
       Math,
       translateProductName,
       translateWarehouse,
@@ -727,6 +706,34 @@ export default {
 </script>
 
 <style scoped>
+/* Dim stale content while a filter change reloads, instead of replacing the page */
+.refreshing {
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+
+.row-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.row-link:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.po-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -736,7 +743,7 @@ export default {
 
 .header-meta {
   font-size: 0.813rem;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .kpi-section {
@@ -746,7 +753,7 @@ export default {
 .section-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 1rem;
@@ -759,8 +766,8 @@ export default {
 }
 
 .kpi-card {
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   padding: 1rem;
 }
@@ -772,7 +779,7 @@ export default {
 .kpi-label {
   font-size: 0.813rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.025em;
 }
@@ -780,21 +787,21 @@ export default {
 .kpi-value {
   font-size: 2rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
   margin-bottom: 0.5rem;
   letter-spacing: -0.025em;
 }
 
 .kpi-goal {
   font-size: 0.813rem;
-  color: #64748b;
+  color: var(--color-text-muted);
   margin-bottom: 0.75rem;
 }
 
 .kpi-progress-bar {
   width: 100%;
   height: 6px;
-  background: #f1f5f9;
+  background: var(--color-surface-muted);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -848,7 +855,7 @@ export default {
   align-items: center;
   gap: 0.625rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--color-text-secondary);
 }
 
 .legend-dot {
@@ -883,7 +890,7 @@ export default {
 
 .donut-center-label {
   font-size: 12px;
-  fill: #64748b;
+  fill: var(--color-text-muted);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -891,7 +898,7 @@ export default {
 
 .donut-center-value {
   font-size: 36px;
-  fill: #0f172a;
+  fill: var(--color-text);
   font-weight: 700;
 }
 
@@ -906,7 +913,7 @@ export default {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--color-text-secondary);
   font-weight: 500;
 }
 
@@ -928,7 +935,7 @@ export default {
 
 .health-metric-label {
   font-size: 0.688rem;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -937,20 +944,20 @@ export default {
 .health-metric-value {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
   letter-spacing: -0.025em;
 }
 
 .metric-good {
-  color: #10b981;
+  color: var(--color-positive);
 }
 
 .metric-warning {
-  color: #f59e0b;
+  color: var(--color-caution);
 }
 
 .metric-bad {
-  color: #ef4444;
+  color: var(--color-negative);
 }
 
 .horizontal-bar-chart {
@@ -971,14 +978,14 @@ export default {
   min-width: 120px;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--color-text-secondary);
   flex-shrink: 0;
 }
 
 .h-bar-container {
   flex: 1;
   height: 32px;
-  background: #f8fafc;
+  background: var(--color-surface-subtle);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -1010,8 +1017,8 @@ export default {
   justify-content: space-between;
   padding-right: 1rem;
   font-size: 0.75rem;
-  color: #94a3b8;
-  border-right: 1px solid #e2e8f0;
+  color: var(--color-text-faint);
+  border-right: 1px solid var(--color-border);
 }
 
 .line-chart-area {
@@ -1052,32 +1059,32 @@ export default {
 }
 
 .line-bar.empty-bar {
-  background: #e2e8f0;
+  background: var(--color-border);
   box-shadow: none;
   min-height: 4px;
 }
 
 .line-bar:hover {
-  background: #2563eb;
+  background: var(--color-accent);
   transform: scaleY(1.05);
 }
 
 .line-bar.empty-bar:hover {
-  background: #cbd5e1;
+  background: var(--color-border-strong);
   transform: none;
 }
 
 .line-bar-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--color-text-muted);
   white-space: nowrap;
 }
 
 .no-data {
   padding: 2rem;
   text-align: center;
-  color: #94a3b8;
+  color: var(--color-text-faint);
   font-size: 0.875rem;
 }
 
@@ -1093,12 +1100,12 @@ export default {
 .success-icon {
   width: 48px;
   height: 48px;
-  color: #10b981;
+  color: var(--color-positive);
 }
 
 .no-backlog-text {
   font-size: 1.125rem;
-  color: #10b981;
+  color: var(--color-positive);
   font-weight: 600;
   margin: 0;
 }
@@ -1109,7 +1116,7 @@ export default {
 }
 
 .clickable-row:hover {
-  background: #eff6ff !important;
+  background: var(--color-accent-soft) !important;
 }
 
 /* Tasks Card Styles */
@@ -1130,7 +1137,9 @@ export default {
 .task-input {
   flex: 1;
   padding: 0.75rem;
-  border: 2px solid #e2e8f0;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 2px solid var(--color-border);
   border-radius: 8px;
   font-size: 0.95rem;
   transition: border-color 0.2s ease;
@@ -1164,7 +1173,7 @@ export default {
 .no-tasks {
   text-align: center;
   padding: 2rem;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-style: italic;
 }
 
@@ -1179,15 +1188,15 @@ export default {
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem;
-  background: #f8fafc;
+  background: var(--color-surface-subtle);
   border-radius: 8px;
   border: 2px solid transparent;
   transition: all 0.2s ease;
 }
 
 .task-item:hover {
-  border-color: #e2e8f0;
-  background: white;
+  border-color: var(--color-border);
+  background: var(--color-surface);
 }
 
 .task-item.completed {
@@ -1196,7 +1205,7 @@ export default {
 
 .task-item.completed .task-text {
   text-decoration: line-through;
-  color: #94a3b8;
+  color: var(--color-text-faint);
 }
 
 .task-checkbox {
@@ -1210,7 +1219,7 @@ export default {
   flex: 1;
   cursor: pointer;
   user-select: none;
-  color: #0f172a;
+  color: var(--color-text);
   font-size: 0.95rem;
 }
 
@@ -1248,12 +1257,12 @@ export default {
 }
 
 .po-button.create {
-  background: #3b82f6;
+  background: var(--color-accent);
   color: white;
 }
 
 .po-button.create:hover {
-  background: #2563eb;
+  background: #1d4ed8;
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
 }

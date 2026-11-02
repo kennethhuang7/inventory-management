@@ -6,8 +6,8 @@
     </div>
 
     <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
-    <div v-else>
+    <ErrorState v-if="error" :message="errorMessage" :stale="hasLoaded" @retry="loadAll" />
+    <div v-if="hasLoaded" :aria-busy="refreshing" :class="{ refreshing }">
       <div class="demand-trend-cards">
         <div class="trend-card increasing-card">
           <div class="trend-header">
@@ -19,7 +19,7 @@
           </div>
           <div class="trend-items">
             <div v-for="item in getForecastsByTrend('increasing').slice(0, 5)" :key="item.id" class="trend-item">
-              <span class="item-name">{{ item.item_name }}</span>
+              <span class="item-name">{{ translateProductName(item.item_name) }}</span>
               <span class="item-change">+{{ getChangePercent(item) }}%</span>
             </div>
             <div v-if="getForecastsByTrend('increasing').length > 5" class="more-items">
@@ -38,7 +38,7 @@
           </div>
           <div class="trend-items">
             <div v-for="item in getForecastsByTrend('stable').slice(0, 5)" :key="item.id" class="trend-item">
-              <span class="item-name">{{ item.item_name }}</span>
+              <span class="item-name">{{ translateProductName(item.item_name) }}</span>
               <span class="item-change neutral">{{ getChangePercent(item) }}%</span>
             </div>
             <div v-if="getForecastsByTrend('stable').length > 5" class="more-items">
@@ -57,7 +57,7 @@
           </div>
           <div class="trend-items">
             <div v-for="item in getForecastsByTrend('decreasing').slice(0, 5)" :key="item.id" class="trend-item">
-              <span class="item-name">{{ item.item_name }}</span>
+              <span class="item-name">{{ translateProductName(item.item_name) }}</span>
               <span class="item-change">{{ getChangePercent(item) }}%</span>
             </div>
             <div v-if="getForecastsByTrend('decreasing').length > 5" class="more-items">
@@ -87,7 +87,7 @@
             <tbody>
               <tr v-for="forecast in forecasts" :key="forecast.id">
                 <td><strong>{{ forecast.item_sku }}</strong></td>
-                <td>{{ forecast.item_name }}</td>
+                <td>{{ translateProductName(forecast.item_name) }}</td>
                 <td>{{ forecast.current_demand }}</td>
                 <td><strong>{{ forecast.forecasted_demand }}</strong></td>
                 <td>
@@ -115,13 +115,14 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { api } from '../api'
 import { useFilters } from '../composables/useFilters'
 import { useI18n } from '../composables/useI18n'
+import ErrorState from '../components/ErrorState.vue'
+import { useLoader } from '../composables/useLoader'
 
 export default {
   name: 'Demand',
+  components: { ErrorState },
   setup() {
-    const { t } = useI18n()
-    const loading = ref(true)
-    const error = ref(null)
+    const { t, currentLocale, translateProductName } = useI18n()
     const allForecasts = ref([])
     const inventoryItems = ref([])
 
@@ -139,31 +140,29 @@ export default {
       return allForecasts.value.filter(f => validSkus.has(f.item_sku))
     })
 
-    const loadForecasts = async () => {
-      try {
-        loading.value = true
-        const filters = getCurrentFilters()
-
-        const [forecastsData, inventoryData] = await Promise.all([
-          api.getDemandForecasts(),
-          api.getInventory({
-            warehouse: filters.warehouse,
-            category: filters.category
-          })
-        ])
-
+    // /api/demand ignores filters, so it is fetched once (and again only on Retry after a failure);
+    // only the inventory lookup that drives the SKU filter is refetched on filter changes.
+    const forecastsLoaded = ref(false)
+    const { loading, refreshing, hasLoaded, error, errorMessage, run: loadAll } = useLoader(async (isCurrent) => {
+      const filters = getCurrentFilters()
+      const [forecastsData, inventoryData] = await Promise.all([
+        forecastsLoaded.value ? null : api.getDemandForecasts(),
+        api.getInventory({
+          warehouse: filters.warehouse,
+          category: filters.category
+        })
+      ])
+      if (!isCurrent()) return
+      if (forecastsData) {
         allForecasts.value = forecastsData
-        inventoryItems.value = inventoryData
-      } catch (err) {
-        error.value = 'Failed to load demand forecasts: ' + err.message
-      } finally {
-        loading.value = false
+        forecastsLoaded.value = true
       }
-    }
+      inventoryItems.value = inventoryData
+    })
 
     // Watch for filter changes and reload data
     watch([selectedLocation, selectedCategory], () => {
-      loadForecasts()
+      loadAll()
     })
 
     const getForecastsByTrend = (trend) => {
@@ -181,17 +180,17 @@ export default {
 
       // If change is within ±2%, consider it stable and show blue
       if (changePercent <= 2) {
-        return '#3b82f6' // Blue for stable
+        // CSS vars so the text color follows the theme
+        return 'var(--color-accent-text)' // Blue for stable
       }
 
-      if (change > 0) return '#10b981' // Green for increasing
-      if (change < 0) return '#ef4444' // Red for decreasing
-      return '#3b82f6' // Blue for no change
+      if (change > 0) return 'var(--color-positive)' // Green for increasing
+      if (change < 0) return 'var(--color-negative)' // Red for decreasing
+      return 'var(--color-accent-text)' // Blue for no change
     }
 
     const translatePeriod = (period) => {
       // Period values like "Next 3 months", "Q1 2025", "30 days", etc.
-      const { currentLocale } = useI18n()
       if (currentLocale.value === 'ja') {
         return period
           .replace(/Next\s+/i, '次の')
@@ -207,12 +206,17 @@ export default {
       return period
     }
 
-    onMounted(loadForecasts)
+    onMounted(loadAll)
 
     return {
       t,
       loading,
+      refreshing,
+      hasLoaded,
       error,
+      errorMessage,
+      loadAll,
+      translateProductName,
       forecasts,
       getForecastsByTrend,
       getChangePercent,
@@ -224,6 +228,11 @@ export default {
 </script>
 
 <style scoped>
+.refreshing {
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
 .demand-trend-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -232,8 +241,8 @@ export default {
 }
 
 .trend-card {
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   padding: 1.5rem;
   transition: all 0.2s ease;
@@ -248,7 +257,7 @@ export default {
 }
 
 .stable-card {
-  border-left: 4px solid #3b82f6;
+  border-left: 4px solid var(--color-accent);
 }
 
 .decreasing-card {
@@ -261,7 +270,7 @@ export default {
   gap: 1rem;
   margin-bottom: 1rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .trend-icon {
@@ -277,24 +286,24 @@ export default {
 }
 
 .increasing-card .trend-icon {
-  background: #d1fae5;
-  color: #059669;
+  background: var(--color-success-bg);
+  color: var(--color-positive);
 }
 
 .stable-card .trend-icon {
-  background: #dbeafe;
-  color: #2563eb;
+  background: var(--color-info-bg);
+  color: var(--color-accent-text);
 }
 
 .decreasing-card .trend-icon {
-  background: #fee2e2;
-  color: #dc2626;
+  background: var(--color-danger-bg);
+  color: var(--color-negative);
 }
 
 .trend-label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -302,7 +311,7 @@ export default {
 .trend-count {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
   margin-top: 0.25rem;
 }
 
@@ -317,18 +326,18 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 0.5rem 0.75rem;
-  background: #f8fafc;
+  background: var(--color-surface-subtle);
   border-radius: 6px;
   transition: background 0.2s;
 }
 
 .trend-item:hover {
-  background: #f1f5f9;
+  background: var(--color-surface-muted);
 }
 
 .item-name {
   font-size: 0.875rem;
-  color: #0f172a;
+  color: var(--color-text);
   font-weight: 500;
   flex: 1;
   overflow: hidden;
@@ -344,24 +353,24 @@ export default {
 }
 
 .increasing-card .item-change {
-  color: #059669;
+  color: var(--color-positive);
 }
 
 .stable-card .item-change {
-  color: #3b82f6;
+  color: var(--color-accent-text);
 }
 
 .decreasing-card .item-change {
-  color: #dc2626;
+  color: var(--color-negative);
 }
 
 .item-change.neutral {
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .more-items {
   font-size: 0.813rem;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-style: italic;
   text-align: center;
   padding: 0.5rem;

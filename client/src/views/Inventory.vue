@@ -6,29 +6,32 @@
     </div>
 
     <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
-    <div v-else>
+    <ErrorState v-if="error" :message="errorMessage" :stale="hasLoaded" @retry="loadInventory" />
+    <div v-if="hasLoaded" :aria-busy="refreshing" :class="{ refreshing }">
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">{{ t('inventory.stockLevels') }} ({{ filteredItems.length }} {{ t('inventory.skus') }})</h3>
           <div class="header-actions">
             <div class="search-box">
-              <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <svg class="search-icon" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
               </svg>
               <input
                 v-model="searchQuery"
                 type="text"
                 :placeholder="t('inventory.searchPlaceholder')"
+                :aria-label="t('inventory.searchPlaceholder')"
                 class="search-input"
               />
               <button
                 v-if="searchQuery"
+                type="button"
                 @click="searchQuery = ''"
                 class="clear-search"
                 :title="t('inventory.clearSearch')"
+                :aria-label="t('inventory.clearSearch')"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
                 </svg>
               </button>
@@ -71,13 +74,16 @@
                 class="clickable-row"
                 @click="showItemDetail(item)"
               >
-                <td><strong>{{ item.sku }}</strong></td>
+                <td>
+                  <!-- Real button so keyboard users can open the detail modal; the row click is mouse-only -->
+                  <button type="button" class="row-link" @click.stop="showItemDetail(item)">{{ item.sku }}</button>
+                </td>
                 <td>{{ translateProductName(item.name) }}</td>
                 <td>{{ translateCategory(item.category) }}</td>
                 <td><strong>{{ item.quantity_on_hand }}</strong></td>
                 <td>{{ item.reorder_point }}</td>
-                <td>{{ currencySymbol }}{{ item.unit_cost.toFixed(2) }}</td>
-                <td><strong>{{ currencySymbol }}{{ (item.quantity_on_hand * item.unit_cost).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) }}</strong></td>
+                <td>{{ formatMoney(item.unit_cost, currentCurrency, { decimals: 2 }) }}</td>
+                <td><strong>{{ formatMoney(item.quantity_on_hand * item.unit_cost, currentCurrency, { decimals: 2 }) }}</strong></td>
                 <td>{{ translateWarehouse(item.location) }}</td>
                 <td>
                   <span :class="['badge', getStockStatusClass(item)]">
@@ -105,22 +111,20 @@ import { api } from '../api'
 import { useFilters } from '../composables/useFilters'
 import { useI18n } from '../composables/useI18n'
 import InventoryDetailModal from '../components/InventoryDetailModal.vue'
+import ErrorState from '../components/ErrorState.vue'
+import { useLoader } from '../composables/useLoader'
+import { formatMoney } from '../utils/format'
 import { toCsv, downloadCsv } from '../utils/csv'
 
 export default {
   name: 'Inventory',
   components: {
-    InventoryDetailModal
+    InventoryDetailModal,
+    ErrorState
   },
   setup() {
     const { t, currentCurrency, translateProductName, translateWarehouse } = useI18n()
 
-    const currencySymbol = computed(() => {
-      return currentCurrency.value === 'JPY' ? '¥' : '$'
-    })
-
-    const loading = ref(true)
-    const error = ref(null)
     const items = ref([])
     const searchQuery = ref('')
 
@@ -166,21 +170,16 @@ export default {
       })
     })
 
-    const loadInventory = async () => {
-      try {
-        loading.value = true
-        const filters = getCurrentFilters()
-        // Inventory doesn't support month/status filters, only warehouse and category
-        items.value = await api.getInventory({
-          warehouse: filters.warehouse,
-          category: filters.category
-        })
-      } catch (err) {
-        error.value = 'Failed to load inventory: ' + err.message
-      } finally {
-        loading.value = false
-      }
-    }
+    const { loading, refreshing, hasLoaded, error, errorMessage, run: loadInventory } = useLoader(async (isCurrent) => {
+      const filters = getCurrentFilters()
+      // Inventory doesn't support month/status filters, only warehouse and category
+      const data = await api.getInventory({
+        warehouse: filters.warehouse,
+        category: filters.category
+      })
+      if (!isCurrent()) return
+      items.value = data
+    })
 
     // Watch for filter changes and reload data
     watch([selectedLocation, selectedCategory], () => {
@@ -263,7 +262,11 @@ export default {
       t,
       exportCsv,
       loading,
+      refreshing,
+      hasLoaded,
       error,
+      errorMessage,
+      loadInventory,
       items,
       searchQuery,
       filteredItems,
@@ -273,7 +276,8 @@ export default {
       showItemModal,
       selectedItem,
       showItemDetail,
-      currencySymbol,
+      currentCurrency,
+      formatMoney,
       translateProductName,
       translateWarehouse
     }
@@ -291,7 +295,7 @@ export default {
 }
 
 .page-header p {
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 0.875rem;
 }
 
@@ -301,13 +305,13 @@ export default {
   align-items: center;
   gap: 1.5rem;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .card-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--color-text);
   margin: 0;
 }
 
@@ -323,30 +327,30 @@ export default {
   left: 0.75rem;
   width: 18px;
   height: 18px;
-  color: #94a3b8;
+  color: var(--color-text-faint);
   pointer-events: none;
 }
 
 .search-input {
   width: 100%;
   padding: 0.5rem 2.5rem 0.5rem 2.5rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   font-size: 0.875rem;
-  color: #0f172a;
-  background: #f8fafc;
+  color: var(--color-text);
+  background: var(--color-surface-subtle);
   transition: all 0.2s;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  background: white;
+  border-color: var(--color-accent);
+  background: var(--color-surface);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .search-input::placeholder {
-  color: #94a3b8;
+  color: var(--color-text-faint);
 }
 
 .clear-search {
@@ -359,14 +363,14 @@ export default {
   background: transparent;
   border: none;
   border-radius: 4px;
-  color: #94a3b8;
+  color: var(--color-text-faint);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .clear-search:hover {
-  background: #e2e8f0;
-  color: #64748b;
+  background: var(--color-border);
+  color: var(--color-text-muted);
 }
 
 .clear-search svg {
@@ -386,26 +390,26 @@ export default {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.875rem;
-  background: white;
-  border: 1px solid #cbd5e1;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #0f172a;
+  color: var(--color-text);
   white-space: nowrap;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .export-btn:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #94a3b8;
-  color: #2563eb;
+  background: var(--color-surface-subtle);
+  border-color: var(--color-border-strong);
+  color: var(--color-accent-text);
 }
 
 .export-btn:focus-visible {
   outline: none;
-  border-color: #2563eb;
+  border-color: var(--color-accent);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
 }
 
@@ -433,11 +437,31 @@ export default {
 .error {
   padding: 2rem;
   text-align: center;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .error {
-  color: #ef4444;
+  color: var(--color-negative);
+}
+
+.refreshing {
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.row-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+}
+
+.row-link:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .clickable-row {
@@ -446,6 +470,6 @@ export default {
 }
 
 .clickable-row:hover {
-  background: #eff6ff !important;
+  background: var(--color-accent-soft) !important;
 }
 </style>

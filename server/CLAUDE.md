@@ -155,8 +155,8 @@ def get_item(item_id: str):
 ### CORS Configuration
 
 **Development:**
-- Allow all origins during development (`allow_origins=["*"]`)
-- Useful for frontend dev server on different port
+- Allow only the frontend dev server origins (`http://localhost:3000`, `http://127.0.0.1:3000`)
+- Leave `allow_credentials=False` (the app uses no cookies; browsers reject a wildcard origin with credentials anyway)
 
 **Production:**
 - Restrict to specific origins only
@@ -271,10 +271,11 @@ server/
 - Never commit secrets to git
 
 **Current State:**
-- No authentication (demo only)
-- CORS allows all origins
+- No authentication (demo only); the server binds to 127.0.0.1
+- CORS allows only the local frontend origins (`localhost:3000`, `127.0.0.1:3000`), no credentials, methods GET/POST/PATCH/DELETE
+- Responses over 1 KB are gzipped
+- Write endpoints (tasks, purchase orders) validate input with bounded Pydantic `Field`s
 - No rate limiting
-- No input validation beyond types
 - Suitable for local development only
 
 ## Quick Reference

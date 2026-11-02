@@ -2,11 +2,11 @@
   <Teleport to="body">
     <Transition name="modal">
       <div v-if="isOpen" class="modal-overlay" @click="close">
-        <div class="modal-container tasks-modal-container" @click.stop>
+        <div ref="dialogRef" class="modal-container tasks-modal-container" role="dialog" aria-modal="true" aria-labelledby="tasks-modal-title" tabindex="-1" @click.stop>
           <div class="modal-header">
-            <h3 class="modal-title">{{ t('tasks.title') }}</h3>
-            <button class="close-button" @click="close">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <h3 id="tasks-modal-title" class="modal-title">{{ t('tasks.title') }}</h3>
+            <button type="button" class="close-button" :aria-label="t('common.close')" @click="close">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               </svg>
             </button>
@@ -54,7 +54,7 @@
                 </div>
 
                 <div class="form-group-btn">
-                  <button @click="handleAddTask" class="task-add-btn" :disabled="!newTask.title.trim() || !newTask.dueDate">
+                  <button type="button" @click="handleAddTask" class="task-add-btn" :disabled="!newTask.title.trim() || !newTask.dueDate">
                     {{ t('tasks.addTask') }}
                   </button>
                 </div>
@@ -62,6 +62,9 @@
             </div>
 
             <div class="tasks-divider"></div>
+
+            <!-- Inline error from the parent (failed load/add/delete/toggle) -->
+            <p v-if="error" class="tasks-error" role="alert">{{ error }}</p>
 
             <!-- Tasks List -->
             <div v-if="sortedTasks.length === 0" class="no-tasks">
@@ -78,15 +81,23 @@
                 <div class="task-header">
                   <div class="task-check-title">
                     <input
+                      :id="`task-check-${task.id}`"
                       type="checkbox"
                       :checked="task.status === 'completed'"
                       @change="$emit('toggle-task', task.id)"
                       class="task-checkbox"
                     />
-                    <span class="task-title" @click="$emit('toggle-task', task.id)">{{ task.title }}</span>
+                    <!-- A real label makes the title keyboard/screen-reader operable and names the checkbox -->
+                    <label :for="`task-check-${task.id}`" class="task-title">{{ task.title }}</label>
                   </div>
-                  <button @click="$emit('delete-task', task.id)" class="task-delete-btn" title="Delete task">
-                    ×
+                  <button
+                    type="button"
+                    @click="$emit('delete-task', task.id)"
+                    class="task-delete-btn"
+                    :title="t('tasks.deleteTask')"
+                    :aria-label="t('tasks.deleteTaskNamed', { title: task.title })"
+                  >
+                    <span aria-hidden="true">×</span>
                   </button>
                 </div>
 
@@ -95,7 +106,7 @@
                     {{ translatePriority(task.priority) }}
                   </span>
                   <div class="task-due-date">
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                       <rect x="2" y="3" width="10" height="9" rx="1" stroke="currentColor" stroke-width="1.2"/>
                       <path d="M4.5 1.5V4.5M9.5 1.5V4.5M2 6H12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
                     </svg>
@@ -110,7 +121,7 @@
           </div>
 
           <div class="modal-footer">
-            <button class="btn-secondary" @click="close">{{ t('profileDetails.close') }}</button>
+            <button type="button" class="btn-secondary" @click="close">{{ t('profileDetails.close') }}</button>
           </div>
         </div>
       </div>
@@ -121,6 +132,7 @@
 <script>
 import { ref, computed } from 'vue'
 import { useI18n } from '../composables/useI18n'
+import { useModalA11y } from '../composables/useModalA11y'
 
 export default {
   name: 'TasksModal',
@@ -132,6 +144,10 @@ export default {
     tasks: {
       type: Array,
       default: () => []
+    },
+    error: {
+      type: String,
+      default: ''
     }
   },
   emits: ['close', 'add-task', 'delete-task', 'toggle-task'],
@@ -148,9 +164,11 @@ export default {
       return [...props.tasks]
     })
 
+    const dialogRef = ref(null)
     const close = () => {
       emit('close')
     }
+    useModalA11y(() => props.isOpen, dialogRef, close)
 
     const handleAddTask = () => {
       if (newTask.value.title.trim() && newTask.value.dueDate) {
@@ -231,6 +249,7 @@ export default {
 
     return {
       t,
+      dialogRef,
       newTask,
       sortedTasks,
       close,
@@ -259,7 +278,7 @@ export default {
 }
 
 .modal-container {
-  background: white;
+  background: var(--color-surface);
   border-radius: 12px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   width: 90%;
@@ -278,20 +297,20 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem 2rem;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 2px solid var(--color-border);
 }
 
 .modal-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--color-text);
   margin: 0;
 }
 
 .close-button {
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--color-text-muted);
   cursor: pointer;
   padding: 0.5rem;
   display: flex;
@@ -302,8 +321,8 @@ export default {
 }
 
 .close-button:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
 }
 
 .modal-body {
@@ -314,7 +333,7 @@ export default {
 
 .modal-footer {
   padding: 1.5rem 2rem;
-  border-top: 2px solid #e2e8f0;
+  border-top: 2px solid var(--color-border);
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
@@ -322,8 +341,8 @@ export default {
 
 .btn-secondary {
   padding: 0.75rem 1.5rem;
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--color-surface-muted);
+  color: var(--color-text-secondary);
   border: none;
   border-radius: 8px;
   font-weight: 600;
@@ -332,12 +351,12 @@ export default {
 }
 
 .btn-secondary:hover {
-  background: #e2e8f0;
+  background: var(--color-border);
 }
 
 /* Task Form */
 .task-form {
-  background: #f8fafc;
+  background: var(--color-surface-subtle);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
@@ -372,14 +391,17 @@ export default {
 label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--color-text-secondary);
 }
 
 .task-input,
 .task-select {
   padding: 0.75rem;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--color-border);
   border-radius: 8px;
+  /* Explicit colors: native controls otherwise keep the UA default (grey in dark mode) */
+  background: var(--color-surface);
+  color: var(--color-text);
   font-size: 0.95rem;
   transition: border-color 0.2s ease;
   font-family: inherit;
@@ -393,7 +415,7 @@ label {
 
 .task-select {
   cursor: pointer;
-  background: white;
+  background: var(--color-surface);
 }
 
 .task-add-btn {
@@ -420,14 +442,14 @@ label {
 
 .tasks-divider {
   height: 1px;
-  background: #e2e8f0;
+  background: var(--color-border);
   margin: 2rem 0;
 }
 
 .no-tasks {
   text-align: center;
   padding: 3rem;
-  color: #64748b;
+  color: var(--color-text-muted);
   font-size: 1.1rem;
   font-style: italic;
 }
@@ -439,15 +461,15 @@ label {
 }
 
 .task-item {
-  background: white;
-  border: 2px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
   border-radius: 10px;
   padding: 1rem 1.25rem;
   transition: all 0.2s ease;
 }
 
 .task-item:hover {
-  border-color: #cbd5e1;
+  border-color: var(--color-border-strong);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
@@ -460,7 +482,7 @@ label {
 }
 
 .task-item.priority-low {
-  border-left: 4px solid #2563eb;
+  border-left: 4px solid var(--color-accent);
 }
 
 .task-item.completed {
@@ -494,7 +516,7 @@ label {
   flex: 1;
   cursor: pointer;
   user-select: none;
-  color: #0f172a;
+  color: var(--color-text);
   font-size: 1rem;
   font-weight: 600;
   line-height: 1.4;
@@ -502,13 +524,13 @@ label {
 
 .task-item.completed .task-title {
   text-decoration: line-through;
-  color: #94a3b8;
+  color: var(--color-text-faint);
 }
 
 .task-delete-btn {
   width: 28px;
   height: 28px;
-  background: #ef4444;
+  background: #dc2626;
   color: white;
   border: none;
   border-radius: 6px;
@@ -524,7 +546,7 @@ label {
 }
 
 .task-delete-btn:hover {
-  background: #dc2626;
+  background: #b91c1c;
   transform: scale(1.1);
 }
 
@@ -544,18 +566,18 @@ label {
 }
 
 .priority-badge.high {
-  background: #fecaca;
-  color: #991b1b;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .priority-badge.medium {
-  background: #fed7aa;
-  color: #92400e;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .priority-badge.low {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
 }
 
 .task-due-date {
@@ -563,11 +585,11 @@ label {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.813rem;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .task-due-date svg {
-  color: #94a3b8;
+  color: var(--color-text-faint);
 }
 
 .status-badge {
@@ -579,23 +601,23 @@ label {
 }
 
 .status-badge.overdue {
-  background: #fecaca;
-  color: #991b1b;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .status-badge.urgent {
-  background: #fed7aa;
-  color: #92400e;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .status-badge.upcoming {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
 }
 
 .status-badge.completed {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
 }
 
 /* Modal transitions */
@@ -617,5 +639,30 @@ label {
 .modal-enter-from .modal-container,
 .modal-leave-to .modal-container {
   transform: scale(0.9);
+}
+
+.tasks-error {
+  margin: 0 0 1rem 0;
+  padding: 0.625rem 0.875rem;
+  background: var(--color-danger-soft);
+  border: 1px solid var(--color-danger-bg);
+  border-radius: 6px;
+  color: var(--color-negative);
+  font-size: 0.875rem;
+}
+
+/* Visible keyboard focus for controls that otherwise rely on browser defaults */
+.close-button:focus-visible,
+.btn-secondary:focus-visible,
+.task-delete-btn:focus-visible,
+.task-add-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.task-checkbox:focus-visible + .task-title {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 </style>

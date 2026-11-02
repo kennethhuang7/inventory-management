@@ -2,11 +2,11 @@
   <Teleport to="body">
     <Transition name="modal">
       <div v-if="isOpen" class="modal-overlay" @click="close">
-        <div class="modal-container" @click.stop>
+        <div ref="dialogRef" class="modal-container" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title" tabindex="-1" @click.stop>
           <div class="modal-header">
-            <h3 class="modal-title">{{ t('profileDetails.title') }}</h3>
-            <button class="close-button" @click="close">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <h3 id="profile-modal-title" class="modal-title">{{ t('profileDetails.title') }}</h3>
+            <button type="button" class="close-button" :aria-label="t('common.close')" @click="close">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               </svg>
             </button>
@@ -45,7 +45,7 @@
 
                 <div class="info-item">
                   <div class="info-label">{{ t('profileDetails.joinDate') }}</div>
-                  <div class="info-value">{{ formatDate(currentUser.joinDate) }}</div>
+                  <div class="info-value">{{ formatDate(currentUser.joinDate, currentLocale, { year: 'numeric', month: 'long', day: 'numeric' }) }}</div>
                 </div>
 
                 <div class="info-item">
@@ -57,7 +57,7 @@
           </div>
 
           <div class="modal-footer">
-            <button class="btn-secondary" @click="close">{{ t('profileDetails.close') }}</button>
+            <button type="button" class="btn-secondary" @click="close">{{ t('profileDetails.close') }}</button>
           </div>
         </div>
       </div>
@@ -66,8 +66,11 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import { useI18n } from '../composables/useI18n'
+import { useModalA11y } from '../composables/useModalA11y'
+import { formatDate } from '../utils/format'
 
 const { currentUser, getInitials } = useAuth()
 const { t, currentLocale } = useI18n()
@@ -81,19 +84,11 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
+const dialogRef = ref(null)
 const close = () => {
   emit('close')
 }
-
-const formatDate = (dateString) => {
-  const date = new Date(dateString)
-  const locale = currentLocale.value === 'ja' ? 'ja-JP' : 'en-US'
-  return date.toLocaleDateString(locale, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
+useModalA11y(() => props.isOpen, dialogRef, close)
 </script>
 
 <style scoped>
@@ -112,7 +107,7 @@ const formatDate = (dateString) => {
 }
 
 .modal-container {
-  background: white;
+  background: var(--color-surface);
   border-radius: 12px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
   max-width: 600px;
@@ -128,20 +123,20 @@ const formatDate = (dateString) => {
   align-items: center;
   justify-content: space-between;
   padding: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .modal-title {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
   letter-spacing: -0.025em;
 }
 
 .close-button {
   background: none;
   border: none;
-  color: #64748b;
+  color: var(--color-text-muted);
   cursor: pointer;
   padding: 0.5rem;
   display: flex;
@@ -152,8 +147,8 @@ const formatDate = (dateString) => {
 }
 
 .close-button:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
 }
 
 .modal-body {
@@ -174,7 +169,7 @@ const formatDate = (dateString) => {
   align-items: center;
   gap: 0.75rem;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .avatar-xl {
@@ -195,13 +190,13 @@ const formatDate = (dateString) => {
 .profile-name {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text);
   margin: 0;
 }
 
 .profile-job-title {
   font-size: 1rem;
-  color: #64748b;
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -222,18 +217,18 @@ const formatDate = (dateString) => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--color-text-muted);
 }
 
 .info-value {
   font-size: 0.938rem;
-  color: #0f172a;
+  color: var(--color-text);
   font-weight: 500;
 }
 
 .modal-footer {
   padding: 1.5rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--color-border);
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
@@ -241,20 +236,20 @@ const formatDate = (dateString) => {
 
 .btn-secondary {
   padding: 0.625rem 1.25rem;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   font-weight: 500;
   font-size: 0.875rem;
-  color: #334155;
+  color: var(--color-text-secondary);
   cursor: pointer;
   transition: all 0.15s ease;
   font-family: inherit;
 }
 
 .btn-secondary:hover {
-  background: #e2e8f0;
-  border-color: #cbd5e1;
+  background: var(--color-border);
+  border-color: var(--color-border-strong);
 }
 
 /* Modal transition animations */
@@ -276,5 +271,12 @@ const formatDate = (dateString) => {
 .modal-enter-from .modal-container,
 .modal-leave-to .modal-container {
   transform: scale(0.95);
+}
+
+/* Visible keyboard focus for the close button and footer button */
+.close-button:focus-visible,
+.btn-secondary:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 </style>

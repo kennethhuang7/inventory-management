@@ -4,6 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script>
+    // Runs before the app mounts so a dark theme never flashes white first. Keep the storage
+    // key and the logic in sync with src/composables/useTheme.js
+    try {
+      var theme = localStorage.getItem('app-theme')
+      if (theme !== 'dark' && theme !== 'light') {
+        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      }
+      document.documentElement.dataset.theme = theme
+    } catch (e) {}
+  </script>
   <title>Factory Inventory Management System</title>
 </head>
 <body>
