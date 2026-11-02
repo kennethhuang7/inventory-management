@@ -89,11 +89,50 @@ const selectLanguage = (locale) => {
 </script>
 
 <style scoped>
+/* NOTE: the whole selector must sit inside :global(); see the same note in ProfileMenu.vue. */
+/* Collapsed rail: icon only; dropdown opens to the right of the rail */
+:global(.app-shell.collapsed .language-label),
+:global(.app-shell.collapsed .language-button .chevron) {
+  display: none;
+}
+
+:global(.app-shell.collapsed .language-button) {
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+:global(.app-shell.collapsed .dropdown-menu) {
+  bottom: 0;
+  left: calc(100% + 0.5rem);
+}
+
+/* The drawer on mobile always shows labels, regardless of collapsed state */
+@media (max-width: 767px) {
+  :global(.app-shell.collapsed .language-label) {
+    display: block;
+  }
+
+  :global(.app-shell.collapsed .language-button .chevron) {
+    display: block;
+  }
+
+  :global(.app-shell.collapsed .language-button) {
+    justify-content: flex-start;
+    padding: 0.5rem 0.875rem;
+  }
+
+  :global(.app-shell.collapsed .dropdown-menu) {
+    bottom: calc(100% + 0.5rem);
+    left: 0;
+  }
+}
+
 .language-switcher {
   position: relative;
 }
 
 .language-button {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -119,6 +158,8 @@ const selectLanguage = (locale) => {
 }
 
 .language-label {
+  flex: 1;
+  text-align: left;
   font-weight: 500;
 }
 
@@ -134,8 +175,9 @@ const selectLanguage = (locale) => {
 
 .dropdown-menu {
   position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
+  /* Footer widget: open upward so the menu is not cut off at the viewport bottom */
+  bottom: calc(100% + 0.5rem);
+  left: 0;
   min-width: 160px;
   background: white;
   border: 1px solid #e2e8f0;

@@ -106,8 +106,20 @@ export default {
   border-bottom: 1px solid #e2e8f0;
   padding: 0.75rem 0;
   position: sticky;
-  top: 70px;
-  z-index: 90;
+  top: 0;
+  /* Below the sidebar/drawer layers (50/60/70) so the mobile drawer is never covered */
+  z-index: 40;
+}
+
+@media (max-width: 767px) {
+  .filters-bar {
+    /* Sit under the 56px mobile top bar instead of overlapping it */
+    top: var(--topbar-height, 56px);
+  }
+
+  .filters-container {
+    padding: 0 1rem;
+  }
 }
 
 .filters-container {
@@ -119,11 +131,16 @@ export default {
   gap: 1rem;
 }
 
+/* Wrap at every width, not just mobile: with the 256px sidebar the content column is
+   too narrow for four filters plus the reset button on a ~1200px window, which pushed
+   the reset button off-screen. */
 .filters-grid {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem 1rem;
   flex: 1;
+  min-width: 0;
 }
 
 .filter-group {

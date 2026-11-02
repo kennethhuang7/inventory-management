@@ -116,11 +116,51 @@ const handleLogout = () => {
 </script>
 
 <style scoped>
+/* NOTE: the whole selector must sit inside :global(). Writing `:global(.app-shell.collapsed) .x` makes Vue's scoped
+   compiler drop the `.x` part, leaving `.app-shell.collapsed { display: none }`, which blanks the entire app. */
+/* Collapsed rail: show only the avatar; dropdown opens to the right of the rail */
+:global(.app-shell.collapsed .profile-name),
+:global(.app-shell.collapsed .profile-button .chevron) {
+  display: none;
+}
+
+:global(.app-shell.collapsed .profile-button) {
+  justify-content: center;
+  padding: 0.375rem;
+}
+
+:global(.app-shell.collapsed .dropdown-menu) {
+  bottom: 0;
+  left: calc(100% + 0.5rem);
+}
+
+/* The drawer on mobile always shows labels, regardless of collapsed state */
+@media (max-width: 767px) {
+  :global(.app-shell.collapsed .profile-name) {
+    display: block;
+  }
+
+  :global(.app-shell.collapsed .profile-button .chevron) {
+    display: block;
+  }
+
+  :global(.app-shell.collapsed .profile-button) {
+    justify-content: flex-start;
+    padding: 0.5rem 0.875rem;
+  }
+
+  :global(.app-shell.collapsed .dropdown-menu) {
+    bottom: calc(100% + 0.5rem);
+    left: 0;
+  }
+}
+
 .profile-menu {
   position: relative;
 }
 
 .profile-button {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 0.625rem;
@@ -139,6 +179,7 @@ const handleLogout = () => {
 }
 
 .avatar {
+  flex-shrink: 0;
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -153,6 +194,12 @@ const handleLogout = () => {
 }
 
 .profile-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
   font-size: 0.875rem;
   font-weight: 500;
   color: #0f172a;
@@ -169,8 +216,9 @@ const handleLogout = () => {
 
 .dropdown-menu {
   position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
+  /* Footer widget: open upward so the menu is not cut off at the viewport bottom */
+  bottom: calc(100% + 0.5rem);
+  left: 0;
   min-width: 280px;
   background: white;
   border: 1px solid #e2e8f0;
