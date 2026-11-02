@@ -231,8 +231,10 @@ export default {
         t('inventory.table.category'),
         t('inventory.table.quantityOnHand'),
         t('inventory.table.reorderPoint'),
-        t('inventory.table.unitCost'),
-        t('inventory.table.totalValue'),
+        // unit_cost is always USD and is not converted here, so say so in the header
+        // (the page shows a yen sign in Japanese, but the number itself is still dollars)
+        `${t('inventory.table.unitCost')} (USD)`,
+        `${t('inventory.table.totalValue')} (USD)`,
         t('inventory.table.location'),
         t('inventory.table.status')
       ]

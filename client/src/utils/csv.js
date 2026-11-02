@@ -1,6 +1,6 @@
 // Small CSV helpers for exporting table data. No dependencies.
 
-// A leading =, +, - or @ makes Excel/Sheets treat a cell as a formula. Item names come from
+// A leading =, +, -, @, tab or carriage return makes Excel/Sheets treat a cell as a formula (OWASP). Item names come from
 // server data, so text cells starting with these characters get a leading apostrophe
 // (the usual CSV-injection mitigation). Numbers are written raw and never go through this.
 const FORMULA_TRIGGER = /^[=+\-@\t\r]/
@@ -29,7 +29,7 @@ export function toCsv(headers, rows) {
  * UTF-8; without it, Japanese text (the app has a ja locale) shows up garbled.
  */
 export function downloadCsv(filename, csvText) {
-  const blob = new Blob(['﻿', csvText], { type: 'text/csv;charset=utf-8;' })
+  const blob = new Blob(['\uFEFF', csvText], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
@@ -37,6 +37,6 @@ export function downloadCsv(filename, csvText) {
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
-  // Revoke after the click has been handled so the download is not cancelled
-  setTimeout(() => URL.revokeObjectURL(url), 0)
+  // Revoke after a short delay: revoking immediately cancels the download in some browsers
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
