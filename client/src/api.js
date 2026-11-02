@@ -104,3 +104,9 @@ export const api = {
     return response.data
   }
 }
+
+export function formatApiError(error) {
+  const status = error?.response?.status
+  const message = error?.message || 'Unknown error'
+  return { status, message, isNotFound: status === 404 }
+}
