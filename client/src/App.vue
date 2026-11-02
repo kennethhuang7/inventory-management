@@ -327,6 +327,8 @@ body {
   position: sticky;
   top: 0;
   height: 100vh;
+  /* dvh excludes the iOS Safari toolbar so the footer is not hidden behind it */
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--color-surface);
@@ -542,24 +544,34 @@ body {
     inset: 0 auto 0 0;
     width: var(--sidebar-width);
     transform: translateX(-100%);
-    transition: transform 0.2s ease;
+    /* visibility keeps the off-screen drawer out of the tab order and accessibility tree;
+       it flips after the slide-out finishes so the close animation still plays */
+    visibility: hidden;
+    transition: transform 0.2s ease, visibility 0s linear 0.2s;
     z-index: var(--z-drawer);
     box-shadow: none;
   }
 
   .app-shell.drawer-open .sidebar {
     transform: translateX(0);
+    visibility: visible;
+    transition: transform 0.2s ease, visibility 0s;
     box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
   }
 
   /* Drawer ignores the collapsed state: always show labels */
   .app-shell.collapsed .sidebar-brand {
     flex-direction: row;
-    padding: var(--space-4);
-    gap: var(--space-3);
+    padding: var(--space-4) var(--space-3);
+    gap: var(--space-2);
   }
 
-  .app-shell.collapsed .brand-text,
+  /* .brand-text must stay a flex column (name above subtitle); `display: block` would
+     put its two spans side by side when the desktop-collapsed state is restored on mobile */
+  .app-shell.collapsed .brand-text {
+    display: flex;
+  }
+
   .app-shell.collapsed .nav-label {
     display: block;
   }
